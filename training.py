@@ -60,6 +60,11 @@ def define_loss(x, y, g_list, weights, biases, params):
                 tf.reduce_mean(tf.reduce_mean(tf.square(y[j + 1] - tf.squeeze(x[shift, :, :])), 1)), loss2_denominator)
         loss2 = loss2 / params['num_shifts']
 
+    
+    # get loss to compare with feedforward neural network        
+    loss_comparison= tf.reduce_mean(tf.reduce_mean(tf.square(y[1] - tf.squeeze(x[1, :, :])), 1))
+    
+    
     # K linear
     loss3 = tf.zeros([1, ], dtype=tf.float64)
     count_shifts_middle = 0
@@ -102,7 +107,7 @@ def define_loss(x, y, g_list, weights, biases, params):
 
     loss = loss1 + loss2 + loss3 + loss_Linf
 
-    return loss1, loss2, loss3, loss_Linf, loss
+    return loss1, loss2, loss3, loss_Linf, loss, loss_comparison
 
 
 def define_regularization(params, trainable_var, loss, loss1):
@@ -162,7 +167,7 @@ def try_net(data_val, params):
 
     # DEFINE LOSS FUNCTION
     trainable_var = tf.trainable_variables()
-    loss1, loss2, loss3, loss_Linf, loss = define_loss(x, y, g_list, weights, biases, params)
+    loss1, loss2, loss3, loss_Linf, loss, loss_comparison = define_loss(x, y, g_list, weights, biases, params)
     loss_L1, loss_L2, regularized_loss, regularized_loss1 = define_regularization(params, trainable_var, loss, loss1)
 
     # CHOOSE OPTIMIZATION ALGORITHM
@@ -183,7 +188,7 @@ def try_net(data_val, params):
 
     num_saved_per_file_pass = params['num_steps_per_file_pass'] / 20 + 1
     num_saved = np.floor(num_saved_per_file_pass * params['data_train_len'] * params['num_passes_per_file']).astype(int)
-    train_val_error = np.zeros([num_saved, 16])
+    train_val_error = np.zeros([num_saved, 18])
     count = 0
     best_error = 10000
 
@@ -263,6 +268,10 @@ def try_net(data_val, params):
                 train_val_error[count, 13] = sess.run(loss_L1, feed_dict=feed_dict_val)
                 train_val_error[count, 14] = sess.run(loss_L2, feed_dict=feed_dict_train_loss)
                 train_val_error[count, 15] = sess.run(loss_L2, feed_dict=feed_dict_val)
+                
+                train_val_error[count, 16] = sess.run(loss_comparison, feed_dict=feed_dict_train_loss)
+                train_val_error[count, 17] = sess.run(loss_comparison, feed_dict=feed_dict_val)
+                
 
                 np.savetxt(csv_path, train_val_error, delimiter=',')
                 finished, save_now = helperfns.check_progress(start, best_error, params)
