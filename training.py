@@ -62,7 +62,7 @@ def define_loss(x, y, g_list, weights, biases, params):
 
     
     # get loss to compare with feedforward neural network        
-    loss_comparison= tf.reduce_mean(tf.reduce_mean(tf.square(y[1] - tf.squeeze(x[1, :, :])), 1))
+    loss_comparison= tf.reduce_mean(tf.reduce_sum(tf.square(y[1] - tf.squeeze(x[1, :, :])), 1))
     
     
     # K linear
