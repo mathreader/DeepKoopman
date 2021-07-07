@@ -49,7 +49,7 @@ steps_to_see_all = num_examples / params['batch_size']
 params['num_steps_per_file_pass'] = (int(steps_to_see_all) + 1) * params['num_steps_per_batch']
 
 # settings related to timing
-params['max_time'] = 6 * 60 * 60  # 6 hours
+params['max_time'] = 20 * 60  # 20 minutes
 params['min_5min'] = .25
 params['min_20min'] = .02
 params['min_40min'] = .002
@@ -59,5 +59,5 @@ params['min_3hr'] = .000004
 params['min_4hr'] = .0000005
 params['min_halfway'] = 1
 
-for count in range(200):  # loop to do random experiments
-    training.main_exp(copy.deepcopy(params))
+#for count in range(200):  # loop to do random experiments
+training.main_exp(copy.deepcopy(params))
