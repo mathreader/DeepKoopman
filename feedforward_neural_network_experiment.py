@@ -10,6 +10,8 @@ seed = 5; #set seed to a constant for reproducibility when running experiments
 BatchSize = 128;
 SHUFFLE_BUFFER_SIZE = 100;
 max_time = 20; # time to train for, in minutes
+data_name = 'Pendulum'
+len_time = 51
 
 # Setup the seed for the experiment
 tf.set_random_seed(seed)
@@ -24,29 +26,29 @@ def data_generate(data_orig):
     
     # Initialize size
     data_size = len(data_orig)
-    num_iters = int(np.floor(data_size / params['len_time']))
+    num_iters = int(np.floor(data_size / len_time))
     
     # Initialize new datasets
-    data_x = np.zeros(((params['len_time']-1)*num_iters, 2))
-    data_y = np.zeros(((params['len_time']-1)*num_iters, 2))
+    data_x = np.zeros(((len_time-1)*num_iters, 2))
+    data_y = np.zeros(((len_time-1)*num_iters, 2))
     
     # Loop to generate new datasets
     for i in range(num_iters):
-        input_index_start = i * params['len_time'] 
-        output_index_start = i * (params['len_time'] - 1)
+        input_index_start = i * len_time 
+        output_index_start = i * (len_time - 1)
         
-        for j in range(params['len_time'] - 1):
+        for j in range(len_time - 1):
             data_x[output_index_start + j, :] = data_orig[input_index_start + j, :]
             data_y[output_index_start + j, :] = data_orig[input_index_start + j + 1, :]
     
     return data_x, data_y
 
 def data_batch_generate(data_x, data_y, batch_size):
-	'''Reshapes data to be in batches. Each 2d tensor corresponding to data_batch_x[:,i,:]
-	 or data_batch_y[:,i,:] (for a given i) contains a single batch of data. '''
+    '''Reshapes data to be in batches. Each 2d tensor corresponding to data_batch_x[:,i,:]
+    or data_batch_y[:,i,:] (for a given i) contains a single batch of data. '''
 
-	# determine number of batches. 
-	#We round down, which effectively cuts off some of the data if its length is not an integer multiple of the batch size.
+    # determine number of batches. 
+    #We round down, which effectively cuts off some of the data if its length is not an integer multiple of the batch size.
     num_batches = int(np.floor(data_x.shape[0]/batch_size))
     
     data_batch_x = np.zeros((batch_size, num_batches, 2))
@@ -65,7 +67,7 @@ def data_extract_first_entry(data_orig):
     
     # Initialize size
     data_size = len(data_orig)
-    num_iters = int(np.floor(data_size / params['len_time']))
+    num_iters = int(np.floor(data_size / len_time))
     
     # Initialize dataset with first entry
     data_x = np.zeros((num_iters, 2))
@@ -74,10 +76,10 @@ def data_extract_first_entry(data_orig):
     # Only put first entry in dataset
     
     for i in range(num_iters):
-        input_index_start = i * params['len_time'] 
+        input_index_start = i * len_time 
         
-        data_x[i, :] = data_orig[i * params['len_time'], :]
-        data_y[i, :] = data_orig[i * params['len_time'] + 1, :]
+        data_x[i, :] = data_orig[i * len_time, :]
+        data_y[i, :] = data_orig[i * len_time + 1, :]
     
     return data_x, data_y
 
@@ -100,8 +102,8 @@ model = tf.keras.Sequential([
 
 
 # Process Data
-data_orig = np.loadtxt(('./data/%s_train1_x.csv' % (params['data_name'])), delimiter=',', dtype=np.float64)
-data_val = np.loadtxt(('./data/%s_val_x.csv' % (params['data_name'])), delimiter=',', dtype=np.float64)
+data_orig = np.loadtxt(('./data/%s_train1_x.csv' % (data_name)), delimiter=',', dtype=np.float64)
+data_val = np.loadtxt(('./data/%s_val_x.csv' % (data_name)), delimiter=',', dtype=np.float64)
 
 # Training Data
 data_x, data_y = data_generate(data_orig)
