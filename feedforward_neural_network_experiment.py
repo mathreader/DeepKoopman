@@ -83,13 +83,34 @@ def data_extract_first_entry(data_orig):
     
     return data_x, data_y
 
+def data_extract_shifted_entries(data_orig):
+    '''Extracts only first entry in the data for data_x, and the 30th entry in the data for data_y.'''
+    shift = 15;
+    
+    # Initialize size
+    data_size = len(data_orig)
+    num_iters = int(np.floor(data_size / len_time))
+    
+    # Initialize dataset with first entry
+    data_x = np.zeros((num_iters, 2))
+    data_y = np.zeros((num_iters, 2))
+    
+    # Only put first entry in dataset
+    
+    for i in range(num_iters):
+        input_index_start = i * len_time 
+        
+        data_x[i, :] = data_orig[i * len_time, :]
+        data_y[i, :] = data_orig[i * len_time + shift, :]
+    
+    return data_x, data_y
+
 
 # Define loss function
 def custom_loss(y_actual,y_pred):
-    #custom_loss=tf.keras.backend.mean(tf.math.reduce_sum(tf.square(y_actual-y_pred), axis=-1))
-    #length = y_actual.shape[0]
     custom_loss=tf.math.reduce_mean(tf.math.reduce_sum(tf.square(y_actual-y_pred), axis=-1))
-    return 
+
+    return custom_loss
 
 # Define network model
 model = tf.keras.Sequential([
@@ -159,3 +180,19 @@ while ((time.time() - start_time) < max_time*60): #multiply max_time by 60 to ge
         
         
 print("20 minutes of training complete")
+
+# Check performance of network after 30 time steps
+
+#process data
+data_x_1, data_y_15 = data_extract_shifted_entries(data_orig)
+
+#apply network to input data 15 times
+for i in range(15-1):
+    data_x_1 = model.predict(data_x_1)
+
+
+shifted_dataset = tf.data.Dataset.from_tensor_slices((data_x_1, data_y_15))
+shifted_dataset = shifted_dataset.batch(BatchSize)
+
+shift_loss = model.evaluate(shifted_dataset)
+print("Shifted loss: " + str(shift_loss))
