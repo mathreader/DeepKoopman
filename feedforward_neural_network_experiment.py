@@ -1,17 +1,20 @@
 import numpy as np
 import tensorflow as tf
 import time
+import datetime
 
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 
 # define constants
-seed = 5; #set seed to a constant for reproducibility when running experiments
+seed = 1; #set seed to a constant for reproducibility when running experiments
 BatchSize = 128;
 SHUFFLE_BUFFER_SIZE = 100;
-max_time = 20; # time to train for, in minutes
+learning_rate = 0.0005
+max_time = 2; # time to train for, in minutes
 data_name = 'Pendulum'
 len_time = 51
+data_file_path = './feedforward_results/Pendulum_{}_error.csv'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
 
 # Setup the seed for the experiment
 tf.set_random_seed(seed)
@@ -83,9 +86,8 @@ def data_extract_first_entry(data_orig):
     
     return data_x, data_y
 
-def data_extract_shifted_entries(data_orig):
+def data_extract_shifted_entries(data_orig, shift):
     '''Extracts only first entry in the data for data_x, and the 30th entry in the data for data_y.'''
-    shift = 15;
     
     # Initialize size
     data_size = len(data_orig)
@@ -142,12 +144,16 @@ comp_dataset = tf.data.Dataset.from_tensor_slices((data_val_comp_x, data_val_com
 comp_dataset = comp_dataset.shuffle(SHUFFLE_BUFFER_SIZE).batch(BatchSize)
 
 # initiate network
-model.compile(optimizer=tf.keras.optimizers.Adam(0.001), loss=custom_loss)
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate), loss=custom_loss)
 
 # train network
 start_time = time.time();
 epoch_num = 1;
 best_error = 10**12;
+
+#open file to print data
+f = open(data_file_path, 'w')
+f.write("Epoch #, Runtime, Train Loss, Val Loss, Comp Loss, 5 Step Loss, 15 Step Loss\n")
 
 print("Starting training")
 while ((time.time() - start_time) < max_time*60): #multiply max_time by 60 to get time in seconds
@@ -170,29 +176,45 @@ while ((time.time() - start_time) < max_time*60): #multiply max_time by 60 to ge
         # Compute the comparison loss
         val_loss_2 = model.evaluate(comp_dataset)
         print("Comparison loss: " + str(val_loss_2))
+
+        # Compute comparison loss for 5 time steps
+        # process data
+        data_x_1, data_y_5 = data_extract_shifted_entries(data_orig, 5)
+
+        #apply network to input data 5 times
+        for i in range(5-1):
+            data_x_1 = model.predict(data_x_1)
+
+        shifted_dataset = tf.data.Dataset.from_tensor_slices((data_x_1, data_y_5))
+        shifted_dataset = shifted_dataset.batch(BatchSize)
+        comparison_loss_5 = model.evaluate(shifted_dataset)
+        print("Comparison loss, 5 steps : " + str(comparison_loss_5))
+
+        # Compute comparison loss for 15 time steps
+        # process data
+        data_x_1, data_y_15 = data_extract_shifted_entries(data_orig, 15)
+
+        #apply network to input data 15 times
+        for i in range(15-1):
+            data_x_1 = model.predict(data_x_1)
+
+        shifted_dataset = tf.data.Dataset.from_tensor_slices((data_x_1, data_y_15))
+        shifted_dataset = shifted_dataset.batch(BatchSize)
+        comparison_loss_15 = model.evaluate(shifted_dataset)
+        print("Comparison loss, 15 steps : " + str(comparison_loss_15))
         
         # Save weights corresponding to lowest validation loss
         if val_loss_2 < (best_error - best_error * (10 ** (-5))):
             best_error = val_loss_2.copy()
             model.save_weights('./checkpoints/my_checkpoint')
-            
+
+        # print loss data to file
+        f.write("{}, {}, {}, {}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_loss, val_loss, val_loss_2, comparison_loss_5, comparison_loss_15))
+        print("{}, {}, {}, {}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_loss, val_loss, val_loss_2, comparison_loss_5, comparison_loss_15))
+
     epoch_num = epoch_num + 1;
         
         
-print("20 minutes of training complete")
+print("{} minutes of training complete".format(max_time))
 
-# Check performance of network after 30 time steps
-
-#process data
-data_x_1, data_y_15 = data_extract_shifted_entries(data_orig)
-
-#apply network to input data 15 times
-for i in range(15-1):
-    data_x_1 = model.predict(data_x_1)
-
-
-shifted_dataset = tf.data.Dataset.from_tensor_slices((data_x_1, data_y_15))
-shifted_dataset = shifted_dataset.batch(BatchSize)
-
-shift_loss = model.evaluate(shifted_dataset)
-print("Shifted loss: " + str(shift_loss))
+f.close()
