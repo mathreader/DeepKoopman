@@ -344,7 +344,7 @@ def set_defaults(params):
 
     # defaults related to initialization of parameters
     if 'seed' not in params:
-        random_seed = 5; #np.random.randint(2 ** 30)
+        random_seed = 1; #np.random.randint(2 ** 30)
         print("setting default: choosing random seed of %d and saving to params" % random_seed)
         params['seed'] = random_seed
     if 'dist_weights' not in params:

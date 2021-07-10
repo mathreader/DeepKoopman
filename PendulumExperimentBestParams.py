@@ -49,7 +49,7 @@ steps_to_see_all = num_examples / params['batch_size']
 params['num_steps_per_file_pass'] = (int(steps_to_see_all) + 1) * params['num_steps_per_batch']
 
 # settings related to timing
-params['max_time'] = 20 * 60  # 20 minutes
+params['max_time'] = 60 * 60  # 60 minutes
 params['min_5min'] = .25
 params['min_20min'] = .02
 params['min_40min'] = .002
