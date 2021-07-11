@@ -202,7 +202,6 @@ def try_net(data_val, params):
 
     # TRAINING
     # loop over training data files
-    print("num steps per file pass = {}".format(params['num_steps_per_file_pass']))
     for f in range(params['data_train_len'] * params['num_passes_per_file']):
         if finished:
             break
@@ -220,7 +219,6 @@ def try_net(data_val, params):
         np.random.shuffle(ind)
         data_train_tensor = data_train_tensor[:, ind, :]
 
-        start_time = time.time();
         # loop over batches in this file
         for step in range(params['num_steps_per_batch'] * num_batches):
 
@@ -240,7 +238,7 @@ def try_net(data_val, params):
             else:
                 sess.run(optimizer, feed_dict=feed_dict_train)
 
-            if step % (params['num_steps_per_file_pass']*10) == 0:
+            if (f*params['num_steps_per_batch'] * num_batches + step) % (params['num_steps_per_file_pass']*10) == 0:
                 train_error = sess.run(loss, feed_dict=feed_dict_train_loss)
                 val_error = sess.run(loss, feed_dict=feed_dict_val)
 
@@ -282,11 +280,12 @@ def try_net(data_val, params):
                 train_val_error[count, 20] = sess.run(loss_comparison_15, feed_dict=feed_dict_train_loss)
                 train_val_error[count, 21] = sess.run(loss_comparison_15, feed_dict=feed_dict_val)
 
-                train_val_error[count, 22] = time.time() - start_time;
-                train_val_error[count, 22] = step/params['num_steps_per_file_pass'];
+                train_val_error[count, 22] = time.time() - start;
+                train_val_error[count, 23] = (f*params['num_steps_per_batch'] * num_batches + step)/params['num_steps_per_file_pass'] + 1;
                 print("Loss comparison_1 on val: " + str(train_val_error[count, 17]))
                 print("Loss comparison_5 on val: " + str(train_val_error[count, 19]))
                 print("Loss comparison_15 on val: " + str(train_val_error[count, 21]))
+                print(train_val_error[count, 23])
                 
 
                 np.savetxt(csv_path, train_val_error, delimiter=',')
