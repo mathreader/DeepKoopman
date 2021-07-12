@@ -17,6 +17,11 @@ f_DeepKoopman = open('./exp2_best/Pendulum_2021_07_11_12_50_17_922906_error.csv'
 dk_lines = f_DeepKoopman.readlines()
 len_dk = len(dk_lines) - 1
 
+# network structure: 80 80 2 2 80 80 2
+f_Koopman_no_aux = open('./feedforward_results/Pendulum_Koopman_no_aux_2021_07_11_13_33_43_884109_error.csv','r')
+K_na_lines = f_Koopman_no_aux.readlines()
+len_K_na = len(K_na_lines) - 1
+
 
 ## Store Data
 
@@ -62,10 +67,32 @@ for i in range(0,len_dk):
 	dk['comp_loss_5'][i] 	= float(line[19]);
 	dk['comp_loss_15'][i] 	= float(line[21]);
 
+# Koopman without Auxiliary network data
+K_na = {}
+K_na['epochs'] 			= np.zeros(len_K_na)
+K_na['times'] 			= np.zeros(len_K_na)
+K_na['train_loss'] 		= np.zeros(len_K_na)
+K_na['val_loss'] 		= np.zeros(len_K_na)
+K_na['comp_loss'] 		= np.zeros(len_K_na)
+K_na['comp_loss_5'] 	= np.zeros(len_K_na)
+K_na['comp_loss_15']	= np.zeros(len_K_na)
+
+for i in range(0,len_K_na):
+	line = K_na_lines[i + 1].strip('\n').split(', ')
+
+	K_na['epochs'][i] 		= int(line[0]);
+	K_na['times'][i] 		= float(line[1]);
+	K_na['train_loss'][i] 	= float(line[2]);
+	K_na['val_loss'][i] 	= float(line[3]);
+	K_na['comp_loss'][i] 	= float(line[4]);
+	K_na['comp_loss_5'][i] 	= float(line[5]);
+	K_na['comp_loss_15'][i] = float(line[6]);
+
 ## Plot Results
 # plot comparison loss vs time
 pyplot.plot(ff['times'], ff['comp_loss'], label = 'Feed-forward')
 pyplot.plot(dk['times'], dk['comp_loss'], label = 'Deep Koopman')
+pyplot.plot(K_na['times'], K_na['comp_loss'], label = 'Koopman Feed-forward')
 pyplot.legend()
 
 pyplot.yscale('log')
@@ -78,6 +105,7 @@ pyplot.show()
 # plot comparison loss after 5 steps vs time
 pyplot.plot(ff['times'], ff['comp_loss_5'], label = 'Feed-forward')
 pyplot.plot(dk['times'], dk['comp_loss_5'], label = 'Deep Koopman')
+pyplot.plot(K_na['times'], K_na['comp_loss_5'], label = 'Koopman Feed-forward')
 pyplot.legend()
 
 pyplot.yscale('log')
@@ -90,6 +118,7 @@ pyplot.show()
 # plot comparison loss after 15 steps vs time
 pyplot.plot(ff['times'], ff['comp_loss_15'], label = 'Feed-forward')
 pyplot.plot(dk['times'], dk['comp_loss_15'], label = 'Deep Koopman')
+pyplot.plot(K_na['times'], K_na['comp_loss_15'], label = 'Koopman Feed-forward')
 pyplot.legend()
 
 pyplot.yscale('log')
