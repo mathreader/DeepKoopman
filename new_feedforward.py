@@ -3,10 +3,12 @@ import tensorflow as tf
 from tensorflow import keras
 tf.keras.backend.set_floatx('float64')
 import time
+import datetime
 
 data_name = 'Pendulum'
 len_time = 51
 num_shifts = len_time - 1
+data_file_path = './feedforward_results/Pendulum_{}_error.csv'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
 max_time = 60; #time to run training, in minutes
 
 # Function for stacking the data
@@ -112,11 +114,15 @@ model = MLPBlock()
 optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
 print("weights:", len(model.weights))
 print("trainable weights:", len(model.trainable_weights))
-
 # Weights of the model is given by model.linear1.w, model.linear1.b, model.linear2.w, model.linear2.b
+
+#open file to print data
+f = open(data_file_path, 'w')
+f.write("Epoch #, Runtime, 1 Step Train Loss, 1 Step Val Loss, 50 Step Train Loss, 50 Step Val Loss\n")
 
 epoch_num = 1;
 start_time = time.time();
+
 while ((time.time() - start_time) < max_time*60):
     # Training step
     grads = grad(model, data_orig_stacked, 50)
@@ -125,9 +131,21 @@ while ((time.time() - start_time) < max_time*60):
     
     if (epoch_num-1) % 10 == 0:
         # Evaluation step
-        print("1-step Training Loss at epoch {:03d}: {:.3f}".format(epoch_num, loss(model, data_orig_stacked, 1)))
-        print("1-step Evaluation Loss at epoch {:03d}: {:.3f}".format(epoch_num, loss(model, data_val_stacked, 1)))
-        print("50-step Training Loss at epoch {:03d}: {:.3f}".format(epoch_num, loss(model, data_orig_stacked, 50)))
-        print("50-step Evaluation Loss at epoch {:03d}: {:.3f}".format(epoch_num, loss(model, data_val_stacked, 50)))
+        train_loss_1    = loss(model, data_orig_stacked, 1)
+        val_loss_1      = loss(model, data_val_stacked, 1)
+        train_loss_50   = loss(model, data_orig_stacked, 50)
+        val_loss_50     = loss(model, data_val_stacked, 50)
 
-    epoch_num = epcoh_num + 1;
+        #print results
+        print("Epoch number {:03d}".format(epoch_num))
+        print("1-step Training Loss: {:.5e}".format(epoch_num, train_loss_1))
+        print("1-step Evaluation Loss: {:.5e}".format(epoch_num, val_loss_1))
+        print("50-step Training Loss: {:.5e}".format(epoch_num, train_loss_50))
+        print("50-step Evaluation Loss: {:.5e}".format(epoch_num, val_loss_50))
+
+        # print loss data to file
+        f.write("{}, {}, {}, {}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_loss_1, val_loss_1, train_loss_50, val_loss_50))
+
+    epoch_num = epoch_num + 1;
+
+f.close()
