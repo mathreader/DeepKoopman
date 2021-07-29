@@ -2,10 +2,12 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 tf.keras.backend.set_floatx('float64')
+import time
 
 data_name = 'Pendulum'
 len_time = 51
 num_shifts = len_time - 1
+max_time = 60; #time to run training, in minutes
 
 # Function for stacking the data
 def stack_data(data, num_shifts, len_time):
@@ -86,6 +88,7 @@ def loss(model, inputs, num_loss_steps):
     initial_layer = tf.transpose(inputs[0, :, :])
     current_layer = initial_layer
     error = 0
+    scale = 0.001; #scale used in deep koopman loss
     for i in range(num_loss_steps):
         # Compute the network output after i iterations
         current_layer = model(current_layer)
@@ -94,7 +97,7 @@ def loss(model, inputs, num_loss_steps):
         else: 
             error = error + tf.reduce_mean(tf.reduce_mean(tf.square(current_layer - tf.transpose(inputs[i+1, :, :])), axis=0))
     
-    error = error / num_loss_steps
+    error = scale*error / num_loss_steps
     return error
 
 def grad(model, inputs, num_loss_steps):
@@ -112,17 +115,19 @@ print("trainable weights:", len(model.trainable_weights))
 
 # Weights of the model is given by model.linear1.w, model.linear1.b, model.linear2.w, model.linear2.b
 
-# The loss function to be optimized
-steps = 100
-for i in range(steps):
+epoch_num = 1;
+start_time = time.time();
+while ((time.time() - start_time) < max_time*60):
     # Training step
     grads = grad(model, data_orig_stacked, 50)
     optimizer.apply_gradients(zip(grads, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
         model.linear_2.b, model.linear_3.w, model.linear_3.b, model.linear_4.w, model.linear_4.b, model.linear_5.w, model.linear_5.b]))
     
-    if i % 20 == 0:
+    if (epoch_num-1) % 10 == 0:
         # Evaluation step
-        print("Step-1 Training Loss at step {:03d}: {:.3f}".format(i, loss(model, data_orig_stacked, 1)))
-        print("Step-1 Evaluation Loss at step {:03d}: {:.3f}".format(i, loss(model, data_val_stacked, 1)))
-        print("Step-50 Training Loss at step {:03d}: {:.3f}".format(i, loss(model, data_orig_stacked, 50)))
-        print("Step-50 Evaluation Loss at step {:03d}: {:.3f}".format(i, loss(model, data_val_stacked, 50)))
+        print("1-step Training Loss at epoch {:03d}: {:.3f}".format(epoch_num, loss(model, data_orig_stacked, 1)))
+        print("1-step Evaluation Loss at epoch {:03d}: {:.3f}".format(epoch_num, loss(model, data_val_stacked, 1)))
+        print("50-step Training Loss at epoch {:03d}: {:.3f}".format(epoch_num, loss(model, data_orig_stacked, 50)))
+        print("50-step Evaluation Loss at epoch {:03d}: {:.3f}".format(epoch_num, loss(model, data_val_stacked, 50)))
+
+    epoch_num = epcoh_num + 1;
