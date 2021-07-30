@@ -124,7 +124,7 @@ start_time = time.time();
 
 while ((time.time() - start_time) < max_time*60):
     # Training step
-    grads = grad(model, data_orig_stacked, 50)
+    grads = grad(model, data_orig_stacked, 1)
     optimizer.apply_gradients(zip(grads, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
         model.linear_2.b, model.linear_3.w, model.linear_3.b, model.linear_4.w, model.linear_4.b, model.linear_5.w, model.linear_5.b]))
     
