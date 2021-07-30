@@ -89,7 +89,7 @@ def loss(model, inputs, num_loss_steps):
     initial_layer = tf.transpose(inputs[0, :, :])
     current_layer = initial_layer
     error = 0
-    scale = 0.001; #scale used in deep koopman loss
+    scale = 1; #scale used in deep koopman loss
     for i in range(num_loss_steps):
         # Compute the network output after i iterations
         current_layer = model(current_layer)
@@ -110,7 +110,7 @@ def grad(model, inputs, num_loss_steps):
 
 # Define network model
 model = MLPBlock()
-optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
+optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
 print("weights:", len(model.weights))
 print("trainable weights:", len(model.trainable_weights))
 # Weights of the model is given by model.linear1.w, model.linear1.b, model.linear2.w, model.linear2.b
