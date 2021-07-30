@@ -124,7 +124,7 @@ start_time = time.time();
 
 while ((time.time() - start_time) < max_time*60):
     # Training step
-    grads = grad(model, data_orig_stacked, 1)
+    grads = grad(model, data_orig_stacked, 5)
     optimizer.apply_gradients(zip(grads, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
         model.linear_2.b, model.linear_3.w, model.linear_3.b, model.linear_4.w, model.linear_4.b, model.linear_5.w, model.linear_5.b]))
     
@@ -132,6 +132,8 @@ while ((time.time() - start_time) < max_time*60):
         # Evaluation step
         train_loss_1    = loss(model, data_orig_stacked, 1)
         val_loss_1      = loss(model, data_val_stacked, 1)
+        train_loss_5    = loss(model, data_orig_stacked, 5)
+        val_loss_5      = loss(model, data_val_stacked, 5)
         train_loss_50   = loss(model, data_orig_stacked, 50)
         val_loss_50     = loss(model, data_val_stacked, 50)
 
@@ -139,6 +141,8 @@ while ((time.time() - start_time) < max_time*60):
         print("Epoch number {:03d}".format(epoch_num))
         print("1-step Training Loss: {:.5e}".format(train_loss_1))
         print("1-step Evaluation Loss: {:.5e}".format(val_loss_1))
+        print("5-step Training Loss: {:.5e}".format(train_loss_5))
+        print("5-step Evaluation Loss: {:.5e}".format(val_loss_5))
         print("50-step Training Loss: {:.5e}".format(train_loss_50))
         print("50-step Evaluation Loss: {:.5e}".format(val_loss_50))
 
