@@ -123,10 +123,10 @@ while ((time.time() - start_time) < max_time*60):
     
     if (epoch_num-1) % 10 == 0:
         # Evaluation step
-        train_loss_1    = loss(model, data_orig_stacked, 1)
-        val_loss_1      = loss(model, data_val_stacked, 1)
-        train_loss_50   = loss(model, data_orig_stacked, 50)
-        val_loss_50     = loss(model, data_val_stacked, 50)
+        train_loss_1    = loss(model, data_orig_stacked, K, 1)
+        val_loss_1      = loss(model, data_val_stacked, K, 1)
+        train_loss_50   = loss(model, data_orig_stacked, K, 50)
+        val_loss_50     = loss(model, data_val_stacked, K, 50)
 
         #print results
         print("Epoch number {}".format(epoch_num))
