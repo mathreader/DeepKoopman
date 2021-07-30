@@ -57,8 +57,7 @@ class Linear(keras.layers.Layer):
     def __init__(self, input_dim=32, output_dim=32):
         super(Linear, self).__init__()
         self.w = self.add_weight(
-            shape=(output_dim, input_dim), initializer="random_normal", trainable=True
-        )
+            shape=(output_dim, input_dim), initializer="random_normal", trainable=True, regularizer='l2')
         self.b = self.add_weight(shape=(output_dim,), initializer="zeros", trainable=True)
 
     def call(self, inputs):
@@ -111,7 +110,7 @@ def grad(model, inputs, num_loss_steps):
 
 # Define network model
 model = MLPBlock()
-optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
 print("weights:", len(model.weights))
 print("trainable weights:", len(model.trainable_weights))
 # Weights of the model is given by model.linear1.w, model.linear1.b, model.linear2.w, model.linear2.b
@@ -138,13 +137,13 @@ while ((time.time() - start_time) < max_time*60):
 
         #print results
         print("Epoch number {:03d}".format(epoch_num))
-        print("1-step Training Loss: {:.5e}".format(epoch_num, train_loss_1))
-        print("1-step Evaluation Loss: {:.5e}".format(epoch_num, val_loss_1))
-        print("50-step Training Loss: {:.5e}".format(epoch_num, train_loss_50))
-        print("50-step Evaluation Loss: {:.5e}".format(epoch_num, val_loss_50))
+        print("1-step Training Loss: {:.5e}".format(train_loss_1))
+        print("1-step Evaluation Loss: {:.5e}".format(val_loss_1))
+        print("50-step Training Loss: {:.5e}".format(train_loss_50))
+        print("50-step Evaluation Loss: {:.5e}".format(val_loss_50))
 
         # print loss data to file
-        f.write("{}, {}, {}, {}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_loss_1, val_loss_1, train_loss_50, val_loss_50))
+        f.write("{}, {}, {}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_loss_1, val_loss_1, train_loss_50, val_loss_50))
 
     epoch_num = epoch_num + 1;
 
