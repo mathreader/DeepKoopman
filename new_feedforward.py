@@ -11,7 +11,7 @@ num_shifts = len_time - 1
 num_shifts_train = 1; #number of shifts to train network on
 
 data_file_path = './feedforward_results/Pendulum_{}shifts_{}_error.csv'.format(num_shifts_train, datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
-max_time = 60; #time to run training, in minutes
+max_time = 6*60; #time to run training, in minutes
 
 
 # Function for stacking the data
@@ -147,14 +147,14 @@ while ((time.time() - start_time) < max_time*60):
 
         #print results
         print("Epoch number {:03d}".format(epoch_num))
-        '''
+        
         print("1-step Training Loss: {:.5e}".format(train_loss_1))
         print("1-step Evaluation Loss: {:.5e}".format(val_loss_1))
         print("5-step Training Loss: {:.5e}".format(train_loss_5))
         print("5-step Evaluation Loss: {:.5e}".format(val_loss_5))
         print("50-step Training Loss: {:.5e}".format(train_loss_50))
         print("50-step Evaluation Loss: {:.5e}".format(val_loss_50))
-        '''
+        
 
         if val_loss_1 < best_val_loss_1:
             best_val_loss_1 = val_loss_1
