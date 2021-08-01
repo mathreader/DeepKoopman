@@ -8,8 +8,11 @@ import datetime
 data_name = 'Pendulum'
 len_time = 51
 num_shifts = len_time - 1
-data_file_path = './feedforward_results/Pendulum_{}_error.csv'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
+num_shifts_train = 1; #number of shifts to train network on
+
+data_file_path = './feedforward_results/Pendulum_{}shifts_{}_error.csv'.format(num_shifts_train, datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
 max_time = 60; #time to run training, in minutes
+
 
 # Function for stacking the data
 def stack_data(data, num_shifts, len_time):
@@ -122,9 +125,14 @@ f.write("Epoch #, Runtime, 1 Step Train Loss, 1 Step Val Loss, 50 Step Train Los
 epoch_num = 1;
 start_time = time.time();
 
+#initialize best losses
+best_val_loss_1 = 10^10
+best_val_loss_5 = 10^10
+best_val_loss_50 = 10^10
+
 while ((time.time() - start_time) < max_time*60):
     # Training step
-    grads = grad(model, data_orig_stacked, 5)
+    grads = grad(model, data_orig_stacked, num_shifts_train)
     optimizer.apply_gradients(zip(grads, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
         model.linear_2.b, model.linear_3.w, model.linear_3.b, model.linear_4.w, model.linear_4.b, model.linear_5.w, model.linear_5.b]))
     
@@ -139,15 +147,32 @@ while ((time.time() - start_time) < max_time*60):
 
         #print results
         print("Epoch number {:03d}".format(epoch_num))
+        '''
         print("1-step Training Loss: {:.5e}".format(train_loss_1))
         print("1-step Evaluation Loss: {:.5e}".format(val_loss_1))
         print("5-step Training Loss: {:.5e}".format(train_loss_5))
         print("5-step Evaluation Loss: {:.5e}".format(val_loss_5))
         print("50-step Training Loss: {:.5e}".format(train_loss_50))
         print("50-step Evaluation Loss: {:.5e}".format(val_loss_50))
+        '''
+
+        if val_loss_1 < best_val_loss_1:
+            best_val_loss_1 = val_loss_1
+            print("New best 1-step evaluation loss: {:.5e}".format(best_val_loss_1))
+            model.save_weights('./checkpoints/my_checkpoint_{}shifts_1step_'.format(num_shifts_train))
+
+        if val_loss_5 < best_val_loss_5:
+            best_val_loss_5 = val_loss_5
+            print("New best 5-step evaluation loss: {:.5e}".format(best_val_loss_5))
+            model.save_weights('./checkpoints/my_checkpoint_{}shifts_5step'.format(num_shifts_train))
+
+        if val_loss_50 < best_val_loss_50:
+            best_val_loss_50 = val_loss_50
+            print("New best 50-step evaluation loss: {:.5e}".format(best_val_loss_50))
+            model.save_weights('./checkpoints/my_checkpoint_{}shifts_50step'.format(num_shifts_train))
 
         # print loss data to file
-        f.write("{}, {}, {}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_loss_1, val_loss_1, train_loss_50, val_loss_50))
+        f.write("{}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_loss_1, val_loss_1, train_loss_5, val_loss_5, train_loss_50, val_loss_50))
 
     epoch_num = epoch_num + 1;
 
