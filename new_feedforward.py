@@ -126,9 +126,9 @@ epoch_num = 1;
 start_time = time.time();
 
 #initialize best losses
-best_val_loss_1 = 10^10
-best_val_loss_5 = 10^10
-best_val_loss_50 = 10^10
+best_val_loss_1 = 10^8
+best_val_loss_5 = 10^8
+best_val_loss_50 = 10^8
 
 while ((time.time() - start_time) < max_time*60):
     # Training step
@@ -146,7 +146,7 @@ while ((time.time() - start_time) < max_time*60):
         val_loss_50     = loss(model, data_val_stacked, 50)
 
         #print results
-        print("Epoch number {:03d}".format(epoch_num))
+        print("\nEpoch number {:03d}".format(epoch_num))
         
         print("1-step Training Loss: {:.5e}".format(train_loss_1))
         print("1-step Evaluation Loss: {:.5e}".format(val_loss_1))
@@ -155,18 +155,20 @@ while ((time.time() - start_time) < max_time*60):
         print("50-step Training Loss: {:.5e}".format(train_loss_50))
         print("50-step Evaluation Loss: {:.5e}".format(val_loss_50))
         
+        print("val_loss_1 type = %s" % str(type(val_loss_1)));
 
-        if val_loss_1 < best_val_loss_1:
+
+        if (val_loss_1 < best_val_loss_1):
             best_val_loss_1 = val_loss_1
             print("New best 1-step evaluation loss: {:.5e}".format(best_val_loss_1))
             model.save_weights('./checkpoints/my_checkpoint_{}shifts_1step_'.format(num_shifts_train))
 
-        if val_loss_5 < best_val_loss_5:
+        if (val_loss_5 < best_val_loss_5):
             best_val_loss_5 = val_loss_5
             print("New best 5-step evaluation loss: {:.5e}".format(best_val_loss_5))
             model.save_weights('./checkpoints/my_checkpoint_{}shifts_5step'.format(num_shifts_train))
 
-        if val_loss_50 < best_val_loss_50:
+        if (val_loss_50 < best_val_loss_50):
             best_val_loss_50 = val_loss_50
             print("New best 50-step evaluation loss: {:.5e}".format(best_val_loss_50))
             model.save_weights('./checkpoints/my_checkpoint_{}shifts_50step'.format(num_shifts_train))
