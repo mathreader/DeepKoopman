@@ -126,9 +126,9 @@ epoch_num = 1;
 start_time = time.time();
 
 #initialize best losses
-best_val_loss_1 = 10^8
-best_val_loss_5 = 10^8
-best_val_loss_50 = 10^8
+best_val_loss_1 = 10**8
+best_val_loss_5 = 10**8
+best_val_loss_50 = 10**8
 
 while ((time.time() - start_time) < max_time*60):
     # Training step
