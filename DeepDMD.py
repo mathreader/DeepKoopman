@@ -136,7 +136,7 @@ while ((time.time() - start_time) < max_time*60):
         print("50-step Evaluation Loss: {:.5e}".format(val_loss_50))
 
         # print loss data to file
-        f.write("{}, {}, {}, {}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_loss_1, val_loss_1, train_loss_50, val_loss_50))
+        f.write("{}, {}, {}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_loss_1, val_loss_1, train_loss_50, val_loss_50))
 
     epoch_num = epoch_num + 1;
 
