@@ -82,61 +82,60 @@ class MLPBlock(keras.layers.Layer):
         return self.linear_3(x)
 
 # The loss function to be optimized
-def loss(model, inputs, K, num_loss_steps):
+def loss(model, inputs, K):
     lambda1 = 0.01
 
     layer1 = tf.transpose(inputs[0, :, :])
     layer2 = tf.transpose(inputs[1, :, :])
 
-    error = tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2) + lambda1*tf.norm(K,ord=2)
+    error = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1)) + lambda1*tf.norm(K,ord=2)
 
     return error
 
-def grad(model, inputs, K, num_loss_steps):
+def grad(model, inputs, K):
     with tf.GradientTape() as tape:
-        loss_value = loss(model, inputs, K, num_loss_steps)
+        loss_value = loss(model, inputs, K)
     return tape.gradient(loss_value, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
         model.linear_2.b, model.linear_3.w, model.linear_3.b, K])
 
 
 # Define network model
 model = MLPBlock()
-K = tf.random.normal(
+normal_vector = tf.random.normal(
     (num_observables, num_observables), mean=0.0, stddev=1.0, dtype=tf.dtypes.float64, seed=5)
+K = tf.Variable(initial_value=normal_vector)
 optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
+
+
 print("weights:", len(model.weights))
 print("trainable weights:", len(model.trainable_weights))
 # Weights of the model is given by model.linear1.w, model.linear1.b, model.linear2.w, model.linear2.b
 
 #open file to print data
 f = open(data_file_path, 'w')
-f.write("Epoch #, Runtime, 1 Step Train Loss, 1 Step Val Loss, 50 Step Train Loss, 50 Step Val Loss\n")
+f.write("Epoch #, Runtime, Train Loss, Val Loss\n")
 
 epoch_num = 1;
 start_time = time.time();
 
 while ((time.time() - start_time) < max_time*60):
     # Training step
-    grads = grad(model, data_orig_stacked, K, 50)
+    grads = grad(model, data_orig_stacked, K)
     optimizer.apply_gradients(zip(grads, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
         model.linear_2.b, model.linear_3.w, model.linear_3.b, K]))
     
     if (epoch_num-1) % 10 == 0:
         # Evaluation step
-        train_loss_1    = loss(model, data_orig_stacked, K, 1)
-        val_loss_1      = loss(model, data_val_stacked, K, 1)
-        train_loss_50   = loss(model, data_orig_stacked, K, 50)
-        val_loss_50     = loss(model, data_val_stacked, K, 50)
+        train_loss    = loss(model, data_orig_stacked, K)
+        val_loss      = loss(model, data_val_stacked, K)
 
         #print results
         print("Epoch number {}".format(epoch_num))
-        print("1-step Training Loss: {:.5e}".format(train_loss_1))
-        print("1-step Evaluation Loss: {:.5e}".format(val_loss_1))
-        print("50-step Training Loss: {:.5e}".format(train_loss_50))
-        print("50-step Evaluation Loss: {:.5e}".format(val_loss_50))
+        print("Training Loss: {:.5e}".format(train_loss))
+        print("Evaluation Loss: {:.5e}".format(val_loss))
 
         # print loss data to file
-        f.write("{}, {}, {}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_loss_1, val_loss_1, train_loss_50, val_loss_50))
+        f.write("{}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_loss, val_loss))
 
     epoch_num = epoch_num + 1;
 
