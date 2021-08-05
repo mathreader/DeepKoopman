@@ -55,23 +55,23 @@ data_val_stacked = stack_data(data_val, num_shifts, len_time)
 
 # Custom Linear Layer
 class Linear(keras.layers.Layer):
-    def __init__(self, input_dim=32, output_dim=32):
+    def __init__(self, input_dim=32, output_dim=32, title=''):
         super(Linear, self).__init__()
         self.w = self.add_weight(
-            shape=(output_dim, input_dim), initializer="random_normal", trainable=True, regularizer='l1')
-        self.b = self.add_weight(shape=(output_dim,), initializer="zeros", trainable=True, regularizer='l1')
+            shape=(output_dim, input_dim), initializer="random_normal", trainable=True, regularizer='l2', name = 'W'+title)
+        self.b = self.add_weight(shape=(output_dim,), initializer="zeros", trainable=True, name = 'b' + title)
 
     def call(self, inputs):
         return tf.math.add(tf.matmul(self.w, inputs), tf.expand_dims(self.b, 1))
 
 # Create model
-class MLPBlock(keras.layers.Layer):
+class MLPBlock(tf.keras.Model):
     def __init__(self):
         super(MLPBlock, self).__init__()
 
-        self.linear_1 = Linear(2, 40)
-        self.linear_2 = Linear(40, 40)
-        self.linear_3 = Linear(40, num_observables)
+        self.linear_1 = Linear(2, 40, title='1')
+        self.linear_2 = Linear(40, 40, title='2')
+        self.linear_3 = Linear(40, num_observables, title='3')
 
     def call(self, inputs):
         x = self.linear_1(inputs)
