@@ -67,7 +67,7 @@ class Linear(keras.layers.Layer):
         return tf.math.add(tf.matmul(self.w, inputs), tf.expand_dims(self.b, 1))
 
 # Create model
-class MLPBlock(keras.layers.Layer):
+class MLPBlock(tf.keras.Model):
     def __init__(self):
         super(MLPBlock, self).__init__()
         self.linear_1 = Linear(2, 80)
@@ -146,7 +146,7 @@ while ((time.time() - start_time) < max_time*60):
         val_loss_50     = loss(model, data_val_stacked, 50)
 
         #print results
-        print("\nEpoch number {:03d}".format(epoch_num))
+        print("\nEpoch number {}".format(epoch_num))
         
         '''
         print("1-step Training Loss: {:.5e}".format(train_loss_1))
