@@ -1,0 +1,118 @@
+import numpy as np
+import tensorflow as tf
+from tensorflow import keras
+tf.keras.backend.set_floatx('float64')
+import time
+import datetime
+
+data_name = 'Pendulum'
+len_time = 51
+num_shifts = len_time - 1
+num_shifts_train = 1; #number of shifts to train network on
+
+data_file_path = './feedforward_results/Pendulum_{}shifts_{}_error.csv'.format(num_shifts_train, datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
+max_time = 6*60; #time to run training, in minutes
+
+
+# Function for stacking the data
+def stack_data(data, num_shifts, len_time):
+    """Stack data from a 2D array into a 3D array.
+
+    Arguments:
+        data -- 2D data array to be reshaped
+        num_shifts -- number of shifts (time steps) that losses will use (maximum is len_time - 1)
+        len_time -- number of time steps in each trajectory in data
+
+    Returns:
+        data_tensor -- data reshaped into 3D array, shape: num_shifts + 1, num_traj * (len_time - num_shifts), n
+
+    Side effects:
+        None
+    """
+    nd = data.ndim
+    if nd > 1:
+        n = data.shape[1]
+    else:
+        data = (np.asmatrix(data)).getT()
+        n = 1
+    num_traj = int(data.shape[0] / len_time)
+
+    new_len_time = len_time - num_shifts
+
+    data_tensor = np.zeros([num_shifts + 1, num_traj * new_len_time, n])
+
+    for j in np.arange(num_shifts + 1):
+        for count in np.arange(num_traj):
+            data_tensor_range = np.arange(count * new_len_time, new_len_time + count * new_len_time)
+            data_tensor[j, data_tensor_range, :] = data[count * len_time + j: count * len_time + j + new_len_time, :]
+
+    return data_tensor
+
+# Process Data
+data_orig = np.loadtxt(('./data/%s_train1_x.csv' % (data_name)), delimiter=',', dtype=np.float64)
+data_val = np.loadtxt(('./data/%s_val_x.csv' % (data_name)), delimiter=',', dtype=np.float64)
+
+data_orig_stacked = stack_data(data_orig, num_shifts, len_time)
+data_val_stacked = stack_data(data_val, num_shifts, len_time)
+
+# Custom Linear Layer
+class Linear(keras.layers.Layer):
+    def __init__(self, input_dim=32, output_dim=32, title=''):
+        super(Linear, self).__init__()
+        self.w = self.add_weight(
+            shape=(output_dim, input_dim), initializer="random_normal", trainable=True, regularizer='l2', name = 'W'+title)
+        self.b = self.add_weight(shape=(output_dim,), initializer="zeros", trainable=True, name = 'b' + title)
+
+    def call(self, inputs):
+        return tf.math.add(tf.matmul(self.w, inputs), tf.expand_dims(self.b, 1))
+
+# Create model
+class MLPBlock(tf.keras.Model):
+    def __init__(self):
+        super(MLPBlock, self).__init__()
+        self.linear_1 = Linear(2, 80, title='1')
+        self.linear_2 = Linear(80, 80, title='2')
+        self.linear_3 = Linear(80, 80, title='3')
+        self.linear_4 = Linear(80, 80, title='4')
+        self.linear_5 = Linear(80, 2, title='5')
+
+    def call(self, inputs):
+        x = self.linear_1(inputs)
+        x = tf.nn.relu(x)
+        x = self.linear_2(x)
+        x = tf.nn.relu(x)
+        x = self.linear_3(x)
+        x = tf.nn.relu(x)
+        x = self.linear_4(x)
+        x = tf.nn.relu(x)
+        return self.linear_5(x)
+
+# The loss function to be optimized
+def loss(model, inputs, num_loss_steps):
+    initial_layer = tf.transpose(inputs[0, :, :])
+    current_layer = initial_layer
+    error = 0
+    scale = 1; #scale used in deep koopman loss
+    for i in range(num_loss_steps):
+        # Compute the network output after i iterations
+        current_layer = model(current_layer)
+        if (i == 0):
+            error = tf.reduce_mean(tf.reduce_mean(tf.square(current_layer - tf.transpose(inputs[i+1, :, :])), axis=0))
+        else: 
+            error = error + tf.reduce_mean(tf.reduce_mean(tf.square(current_layer - tf.transpose(inputs[i+1, :, :])), axis=0))
+    
+    error = scale*error / num_loss_steps
+    return error
+
+def grad(model, inputs, num_loss_steps):
+    with tf.GradientTape() as tape:
+        loss_value = loss(model, inputs, num_loss_steps)
+    return tape.gradient(loss_value, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
+        model.linear_2.b, model.linear_3.w, model.linear_3.b, model.linear_4.w, model.linear_4.b, model.linear_5.w, model.linear_5.b])
+
+
+# Define network model
+model = MLPBlock()
+
+#load weights
+model.load_weights('my_checkpoint_1shifts_50step.data-00000-of-00001')
