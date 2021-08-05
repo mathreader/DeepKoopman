@@ -103,7 +103,7 @@ def grad(model, inputs, K):
 model = MLPBlock()
 model.built = True
 #load weights
-model.load_weights('./DeepDMD_Weights')
+model.load_weights('./DeepDMD_Weights/weights_1')
 K = np.load('./DeepDMD_Weights/K.npy') #load K from deep DMD loss
 
 ## compute K_dmd using extended DMD with the neural network as the dictionary functions

@@ -142,8 +142,8 @@ while ((time.time() - start_time) < max_time*60):
 f.close() 
 
 #save weights
-model.save_weights('./DeepDMD_Weights/weights_{}'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")))
+model.save_weights('./DeepDMD_Weights/weights_1')
 
 #save K
-np.save('./DeepDMD_Weights/K_{}.npy'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")))
+np.save('./DeepDMD_Weights/K.npy', K.numpy())
 
