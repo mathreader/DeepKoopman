@@ -113,6 +113,7 @@ def grad(model, inputs, num_loss_steps):
 
 # Define network model
 model = MLPBlock()
-
+model.built = True
 #load weights
-model.load_weights('my_checkpoint_1shifts_50step.data-00000-of-00001')
+model.load_weights('./checkpoints/my_checkpoint_{}shifts_1step_'.format(1))
+print(loss(model, data_orig_stacked, 1))
