@@ -9,7 +9,7 @@ data_name = 'Pendulum'
 len_time = 51
 num_shifts = len_time - 1
 data_file_path = './DeepDMD_results/Pendulum_{}_error.csv'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
-max_time = 2; #time to run training, in minutes
+max_time = 60; #time to run training, in minutes
 num_observables = 10;
 
 # Function for stacking the data
@@ -101,49 +101,33 @@ def grad(model, inputs, K):
 
 # Define network model
 model = MLPBlock()
-normal_vector = tf.random.normal(
-    (num_observables, num_observables), mean=0.0, stddev=1.0, dtype=tf.dtypes.float64, seed=5)
-K = tf.Variable(initial_value=normal_vector)
-optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
+model.built = True
+#load weights
+model.load_weights('./DeepDMD_Weights')
+K = np.load('./DeepDMD_Weights/K.npy') #load K from deep DMD loss
 
+## compute K_dmd using extended DMD with the neural network as the dictionary functions
+#construct matrix Theta
+num_seq = tf.shape(data_orig_stacked)[1]
+Theta_X = np.zeros(num_observables, num_seq)
+Theta_Y = np.zeros(num_observables, num_seq)
 
-print("weights:", len(model.weights))
-print("trainable weights:", len(model.trainable_weights))
-# Weights of the model is given by model.linear1.w, model.linear1.b, model.linear2.w, model.linear2.b
+for i in range(num_seq):
+    Theta_X[:,i] = model.predict(data_orig_stacked[0,i,:]).numpy()
+    Theta_Y[:,i] = model.predict(data_orig_stacked[1,i,:]).numpy()
 
-#open file to print data
-f = open(data_file_path, 'w')
-f.write("Epoch #, Runtime, Train Loss, Val Loss\n")
+# form extended DMD approximation for K
+K_dmd = np.matmul(Theta_Y, np.linalg.pinv(Theta_X))
 
-epoch_num = 1;
-start_time = time.time();
+## compute eigenvalues and eigenvectors of K and K_dmd
+lambda_deepDMD, v_deepDMD = np.linalg.eig(K)
+lambda_eDMD, v_eDMD = np.linalg.eig(K_dmd)
 
-while ((time.time() - start_time) < max_time*60):
-    # Training step
-    grads = grad(model, data_orig_stacked, K)
-    optimizer.apply_gradients(zip(grads, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
-        model.linear_2.b, model.linear_3.w, model.linear_3.b, K]))
-    
-    if (epoch_num-1) % 10 == 0:
-        # Evaluation step
-        train_loss    = loss(model, data_orig_stacked, K)
-        val_loss      = loss(model, data_val_stacked, K)
+#print eigenvalues from largest to smallest
+lambda_deepDMD_sorted = np.sort(lambda_deepDMD)
+lambda_eDMD_sorted = np.sort(lambda_eDMD)
 
-        #print results
-        print("Epoch number {}".format(epoch_num))
-        print("Training Loss: {:.5e}".format(train_loss))
-        print("Evaluation Loss: {:.5e}".format(val_loss))
-
-        # print loss data to file
-        f.write("{}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_loss, val_loss))
-
-    epoch_num = epoch_num + 1;
-
-f.close() 
-
-#save weights
-model.save_weights('./DeepDMD_Weights/weights_{}'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")))
-
-#save K
-np.save('./DeepDMD_Weights/K_{}.npy'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")))
-
+#print eigenvalues
+print("Eigenvalues:")
+for i in range(num_observables):
+	print("Deep DMD: {}, Extended DMD: {}".format(lambda_deepDMD_sorted[i], lambda_eDMD_sorted[i]))

@@ -13,7 +13,8 @@ ff_lines = f_feedforward.readlines()
 len_ff = len(ff_lines) - 1
 
 # deep koopman network (with auxiliary network)
-f_DeepKoopman = open('./exp2_best/Pendulum_2021_07_11_12_50_17_922906_error.csv')
+#f_DeepKoopman = open('./exp2_best/Pendulum_2021_07_11_12_50_17_922906_error.csv', 'r') # 1 hour
+f_DeepKoopman = open('exp2_best/Pendulum_2021_08_01_19_23_18_796570_error.csv', 'r') # 6 hour
 dk_lines = f_DeepKoopman.readlines()
 len_dk = len(dk_lines) - 1
 
@@ -23,17 +24,20 @@ K_na_lines = f_Koopman_no_aux.readlines()
 len_K_na = len(K_na_lines) - 1
 
 # feedforward network trained on 1 step
-f_feedforward1 = open('./feedforward_results/Pendulum_1shifts_2021_08_01_14_16_28_398600_error.csv','r')
+#f_feedforward1 = open('./feedforward_results/Pendulum_1shifts_2021_08_01_14_16_28_398600_error.csv','r') #learning rate = 0.001
+f_feedforward1 = open('./feedforward_results/Pendulum_1shifts_2021_08_02_16_52_18_840824_error.csv', 'r') # learning rate = 0.0001
 ff1_lines = f_feedforward1.readlines()
 len_ff1 = len(ff1_lines) - 1
 
 # feedforward network trained on 5 steps
-f_feedforward5 = open('./feedforward_results/Pendulum_5shifts_2021_08_01_14_18_06_067076_error.csv','r')
+#f_feedforward5 = open('./feedforward_results/Pendulum_5shifts_2021_08_01_14_18_06_067076_error.csv','r')#learning rate = 0.001
+f_feedforward5 = open('./feedforward_results/Pendulum_5shifts_2021_08_02_16_53_49_012444_error.csv', 'r') #learning rate = 0.0001
 ff5_lines = f_feedforward5.readlines()
 len_ff5 = len(ff5_lines) - 1
 
 # feedforward network trained on 50 steps
-f_feedforward50 = open('./feedforward_results/Pendulum_50shifts_2021_08_01_14_19_28_606253_error.csv','r')
+#f_feedforward50 = open('./feedforward_results/Pendulum_50shifts_2021_08_01_14_19_28_606253_error.csv','r') #learning rate = 0.001
+f_feedforward50 = open('./feedforward_results/Pendulum_50shifts_2021_08_02_16_56_01_905692_error.csv','r') #learning rate = 0.01
 ff50_lines = f_feedforward50.readlines()
 len_ff50 = len(ff50_lines) - 1
 
