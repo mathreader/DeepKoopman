@@ -112,9 +112,10 @@ num_seq = tf.shape(data_orig_stacked).numpy()[1]
 Theta_X = np.zeros((num_observables, num_seq))
 Theta_Y = np.zeros((num_observables, num_seq))
 
-
-Theta_X[:,:] = np.squeeze(model.predict(data_orig_stacked[0,:,:]))
-Theta_Y[:,:] = np.squeeze(model.predict(data_orig_stacked[1,:,:]))
+for i in range(num_seq):
+    Theta_X[:,i] = np.squeeze(model.predict(data_orig_stacked[0,i,:]))
+    Theta_Y[:,i] = np.squeeze(model.predict(data_orig_stacked[1,i,:]))
+    print("loop number {}".format(i))
 
 # form extended DMD approximation for K
 K_dmd = np.matmul(Theta_Y, np.linalg.pinv(Theta_X))
