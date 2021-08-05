@@ -113,8 +113,8 @@ Theta_X = np.zeros((num_observables, num_seq))
 Theta_Y = np.zeros((num_observables, num_seq))
 
 for i in range(num_seq):
-    Theta_X[:,i] = model.predict(data_orig_stacked[0,i,:])
-    Theta_Y[:,i] = model.predict(data_orig_stacked[1,i,:])
+    Theta_X[:,i] = np.squeeze(model.predict(data_orig_stacked[0,i,:]))
+    Theta_Y[:,i] = np.squeeze(model.predict(data_orig_stacked[1,i,:]))
 
 # form extended DMD approximation for K
 K_dmd = np.matmul(Theta_Y, np.linalg.pinv(Theta_X))
