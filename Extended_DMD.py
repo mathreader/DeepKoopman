@@ -108,7 +108,7 @@ K = np.load('./DeepDMD_Weights/K.npy') #load K from deep DMD loss
 
 ## compute K_dmd using extended DMD with the neural network as the dictionary functions
 #construct matrix Theta
-num_seq = tf.shape(data_orig_stacked)[1]
+num_seq = tf.shape(data_orig_stacked).numpy()[1]
 Theta_X = np.zeros(num_observables, num_seq)
 Theta_Y = np.zeros(num_observables, num_seq)
 
