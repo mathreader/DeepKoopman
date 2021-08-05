@@ -57,11 +57,11 @@ data_val_stacked = stack_data(data_val, num_shifts, len_time)
 
 # Custom Linear Layer
 class Linear(keras.layers.Layer):
-    def __init__(self, input_dim=32, output_dim=32):
+    def __init__(self, input_dim=32, output_dim=32, title=''):
         super(Linear, self).__init__()
         self.w = self.add_weight(
-            shape=(output_dim, input_dim), initializer="random_normal", trainable=True, regularizer='l2')
-        self.b = self.add_weight(shape=(output_dim,), initializer="zeros", trainable=True)
+            shape=(output_dim, input_dim), initializer="random_normal", trainable=True, regularizer='l2', name = 'W'+title)
+        self.b = self.add_weight(shape=(output_dim,), initializer="zeros", trainable=True, name = 'b' + title)
 
     def call(self, inputs):
         return tf.math.add(tf.matmul(self.w, inputs), tf.expand_dims(self.b, 1))
@@ -70,11 +70,11 @@ class Linear(keras.layers.Layer):
 class MLPBlock(tf.keras.Model):
     def __init__(self):
         super(MLPBlock, self).__init__()
-        self.linear_1 = Linear(2, 80)
-        self.linear_2 = Linear(80, 80)
-        self.linear_3 = Linear(80, 80)
-        self.linear_4 = Linear(80, 80)
-        self.linear_5 = Linear(80, 2)
+        self.linear_1 = Linear(2, 80, title='1')
+        self.linear_2 = Linear(80, 80, title='2')
+        self.linear_3 = Linear(80, 80, title='3')
+        self.linear_4 = Linear(80, 80, title='4')
+        self.linear_5 = Linear(80, 2, title='5')
 
     def call(self, inputs):
         x = self.linear_1(inputs)
@@ -160,17 +160,17 @@ while ((time.time() - start_time) < max_time*60):
         if (val_loss_1 < best_val_loss_1):
             best_val_loss_1 = val_loss_1
             print("New best 1-step evaluation loss: {:.5e}".format(best_val_loss_1))
-            #model.save_weights('./checkpoints/my_checkpoint_{}shifts_1step_'.format(num_shifts_train))
+            model.save_weights('./checkpoints/my_checkpoint_{}shifts_1step_'.format(num_shifts_train))
 
         if (val_loss_5 < best_val_loss_5):
             best_val_loss_5 = val_loss_5
             print("New best 5-step evaluation loss: {:.5e}".format(best_val_loss_5))
-            #model.save_weights('./checkpoints/my_checkpoint_{}shifts_5step'.format(num_shifts_train))
+            model.save_weights('./checkpoints/my_checkpoint_{}shifts_5step'.format(num_shifts_train))
 
         if (val_loss_50 < best_val_loss_50):
             best_val_loss_50 = val_loss_50
             print("New best 50-step evaluation loss: {:.5e}".format(best_val_loss_50))
-            #model.save_weights('./checkpoints/my_checkpoint_{}shifts_50step'.format(num_shifts_train))
+            model.save_weights('./checkpoints/my_checkpoint_{}shifts_50step'.format(num_shifts_train))
 
         # print loss data to file
         f.write("{}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_loss_1, val_loss_1, train_loss_5, val_loss_5, train_loss_50, val_loss_50))
