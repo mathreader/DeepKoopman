@@ -4,6 +4,7 @@ from tensorflow import keras
 tf.keras.backend.set_floatx('float64')
 import time
 import datetime
+import cvxpy as cp
 
 data_name = 'Pendulum'
 len_time = 51
@@ -11,6 +12,7 @@ num_shifts = len_time - 1
 data_file_path = './DeepDMD_results/Pendulum_{}_error.csv'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
 max_time = 60; #time to run training, in minutes
 num_observables = 10;
+lambda1 = 0.01
 
 # Function for stacking the data
 def stack_data(data, num_shifts, len_time):
@@ -104,29 +106,73 @@ model = MLPBlock()
 model.built = True
 #load weights
 model.load_weights('./DeepDMD_Weights/weights_1')
-K = np.load('./DeepDMD_Weights/K.npy') #load K from deep DMD loss
+K_deep = np.load('./DeepDMD_Weights/K.npy') #load K from deep DMD loss
 
 ## compute K_dmd using extended DMD with the neural network as the dictionary functions
 #construct matrix Theta
-num_seq = tf.shape(data_orig_stacked).numpy()[1]
-Theta_X = np.zeros((num_observables, num_seq))
-Theta_Y = np.zeros((num_observables, num_seq))
+# num_seq = tf.shape(data_orig_stacked).numpy()[1]
+# Theta_X = np.zeros((num_observables, num_seq))
+# Theta_Y = np.zeros((num_observables, num_seq))
 
-for i in range(num_seq):
-    Theta_X[:,i] = np.squeeze(model.predict(data_orig_stacked[0,i,:]))
-    Theta_Y[:,i] = np.squeeze(model.predict(data_orig_stacked[1,i,:]))
-    print("loop number {}".format(i))
+# for i in range(num_seq):
+#     Theta_X[:,i] = np.squeeze(model.predict(data_orig_stacked[0,i,:]))
+#     Theta_Y[:,i] = np.squeeze(model.predict(data_orig_stacked[1,i,:]))
+#     print("loop number {}".format(i))
 
-# form extended DMD approximation for K
-K_dmd = np.matmul(Theta_Y, np.linalg.pinv(Theta_X))
+X_data = np.expand_dims(data_orig_stacked[0,:,:], axis=-1)
+Y_data = np.expand_dims(data_orig_stacked[1,:,:], axis=-1)
+print(X_data.shape)
+print(Y_data.shape)
+Theta_X = np.squeeze(model.predict(X_data))
+Theta_Y = np.squeeze(model.predict(Y_data))
+print(Theta_X.shape)
+print(Theta_Y.shape)
+
+
+# Regularized Version suggested in "learning deep neural network representations for koopman operators of nonlinear dynamical systems" 
+# Solve optimization problem via CVXPY
+K_solve = cp.Variable((num_observables, num_observables), complex=True)
+cost = cp.norm2(cp.transpose(Theta_Y[1:100, :]) - K_solve @ cp.transpose(Theta_X[1:100, :])) + lambda1 * cp.norm2(K_solve)
+prob = cp.Problem(cp.Minimize(cost))
+prob.solve(verbose=True)
+
+K_dmd = K_solve.value
+
+
+# Implementation in the Paper "A Data-Driven Approximation of the Koopman Operator: Extending Dynamic Mode Decomposition"
+# print('Computing inverse')
+# G_new = np.matmul(np.transpose(Theta_X),Theta_X)
+# A_new = np.matmul(np.transpose(Theta_X),Theta_Y)
+# print(G_new.shape)
+# print(A_new.shape)
+# inv_G = np.linalg.pinv(G_new)
+# K_dmd = np.matmul(inv_G, A_new)
+# print('Compute K-dmd complete')
+# print(K_dmd.shape)
+
+# Implementation in the Book "Data-Driven Science and Engineering Machine Learning, Dynamical Systems, and Control"
+# print('Computing inverse')
+# inv_X = np.linalg.pinv(np.transpose(Theta_X))
+# print(inv_X.shape)
+# print('Computing K-dmd')
+# K_dmd = np.matmul(np.transpose(Theta_Y), inv_X)
+# print('Compute K-dmd complete')
+# print(K_dmd.shape)
+# print(K_dmd)
 
 ## compute eigenvalues and eigenvectors of K and K_dmd
-lambda_deepDMD, v_deepDMD = np.linalg.eig(K)
+lambda_deepDMD, v_deepDMD = np.linalg.eig(K_deep)
 lambda_eDMD, v_eDMD = np.linalg.eig(K_dmd)
+print(K_deep)
+print(K_dmd)
+
+print('Complete eig comp for K_dmd')
 
 #print eigenvalues from largest to smallest
 lambda_deepDMD_sorted = np.sort(lambda_deepDMD)
 lambda_eDMD_sorted = np.sort(lambda_eDMD)
+
+print('Complete eig comp for lambda_DMD')
 
 #print eigenvalues
 print("Eigenvalues:")
