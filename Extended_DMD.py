@@ -9,8 +9,6 @@ import cvxpy as cp
 data_name = 'Pendulum'
 len_time = 51
 num_shifts = len_time - 1
-data_file_path = './DeepDMD_results/Pendulum_{}_error.csv'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
-max_time = 60; #time to run training, in minutes
 num_observables = 10;
 lambda1 = 0.01
 
@@ -105,8 +103,8 @@ def grad(model, inputs, K):
 model = MLPBlock()
 model.built = True
 #load weights
-model.load_weights('./DeepDMD_Weights/weights_1')
-K_deep = np.load('./DeepDMD_Weights/K.npy') #load K from deep DMD loss
+model.load_weights('./DeepDMD_Weights/weights_no_reg')
+K_deep = np.load('./DeepDMD_Weights/K_no_reg.npy') #load K from deep DMD loss
 
 ## compute K_dmd using extended DMD with the neural network as the dictionary functions
 #construct matrix Theta
@@ -131,24 +129,24 @@ print(Theta_Y.shape)
 
 # Regularized Version suggested in "learning deep neural network representations for koopman operators of nonlinear dynamical systems" 
 # Solve optimization problem via CVXPY
-K_solve = cp.Variable((num_observables, num_observables), complex=True)
-cost = cp.norm2(cp.transpose(Theta_Y[1:100, :]) - K_solve @ cp.transpose(Theta_X[1:100, :])) + lambda1 * cp.norm2(K_solve)
-prob = cp.Problem(cp.Minimize(cost))
-prob.solve(verbose=True)
+#K_solve = cp.Variable((num_observables, num_observables), complex=True)
+#cost = cp.norm2(cp.transpose(Theta_Y[1:100, :]) - K_solve @ cp.transpose(Theta_X[1:100, :])) + lambda1 * cp.norm2(K_solve)
+#prob = cp.Problem(cp.Minimize(cost))
+#prob.solve(verbose=True)
 
-K_dmd = K_solve.value
+#K_dmd = K_solve.value
 
 
 # Implementation in the Paper "A Data-Driven Approximation of the Koopman Operator: Extending Dynamic Mode Decomposition"
-# print('Computing inverse')
-# G_new = np.matmul(np.transpose(Theta_X),Theta_X)
-# A_new = np.matmul(np.transpose(Theta_X),Theta_Y)
-# print(G_new.shape)
-# print(A_new.shape)
-# inv_G = np.linalg.pinv(G_new)
-# K_dmd = np.matmul(inv_G, A_new)
-# print('Compute K-dmd complete')
-# print(K_dmd.shape)
+print('Computing inverse')
+G_new = np.matmul(np.transpose(Theta_X),Theta_X)
+A_new = np.matmul(np.transpose(Theta_X),Theta_Y)
+print(G_new.shape)
+print(A_new.shape)
+inv_G = np.linalg.pinv(G_new)
+K_dmd = np.matmul(inv_G, A_new)
+print('Compute K-dmd complete')
+print(K_dmd.shape)
 
 # Implementation in the Book "Data-Driven Science and Engineering Machine Learning, Dynamical Systems, and Control"
 # print('Computing inverse')

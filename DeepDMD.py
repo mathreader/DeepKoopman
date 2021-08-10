@@ -8,8 +8,8 @@ import datetime
 data_name = 'Pendulum'
 len_time = 51
 num_shifts = len_time - 1
-data_file_path = './DeepDMD_results/Pendulum_{}_error.csv'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
-max_time = 2; #time to run training, in minutes
+data_file_path = './DeepDMD_results/Pendulum_no_reg{}_error.csv'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
+max_time = 60; #time to run training, in minutes
 num_observables = 10;
 
 # Function for stacking the data
@@ -58,7 +58,7 @@ class Linear(keras.layers.Layer):
     def __init__(self, input_dim=32, output_dim=32, title=''):
         super(Linear, self).__init__()
         self.w = self.add_weight(
-            shape=(output_dim, input_dim), initializer="random_normal", trainable=True, regularizer='l2', name = 'W'+title)
+            shape=(output_dim, input_dim), initializer="random_normal", trainable=True, regularizer='l1', name = 'W'+title)
         self.b = self.add_weight(shape=(output_dim,), initializer="zeros", trainable=True, name = 'b' + title)
 
     def call(self, inputs):
@@ -78,8 +78,11 @@ class MLPBlock(tf.keras.Model):
         x = tf.nn.relu(x)
         x = self.linear_2(x)
         x = tf.nn.relu(x)
+        x = self.linear_3(x)
+
+        x_scaled = x/(1 + inputs[:,1]^2) #scale x so that output is in L2
         
-        return self.linear_3(x)
+        return x_scaled
 
 # The loss function to be optimized
 def loss(model, inputs, K):
@@ -88,8 +91,7 @@ def loss(model, inputs, K):
     layer1 = tf.transpose(inputs[0, :, :])
     layer2 = tf.transpose(inputs[1, :, :])
 
-    error = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1)) + lambda1*tf.norm(K,ord=2)
-
+    error = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1))
     return error
 
 def grad(model, inputs, K):
@@ -142,8 +144,8 @@ while ((time.time() - start_time) < max_time*60):
 f.close() 
 
 #save weights
-model.save_weights('./DeepDMD_Weights/weights_1')
+model.save_weights('./DeepDMD_Weights/weights_no_reg')
 
 #save K
-np.save('./DeepDMD_Weights/K.npy', K.numpy())
+np.save('./DeepDMD_Weights/K_no_reg.npy', K.numpy())
 
