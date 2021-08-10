@@ -80,7 +80,7 @@ class MLPBlock(tf.keras.Model):
         x = tf.nn.relu(x)
         x = self.linear_3(x)
 
-        x_scaled = x/(1 + inputs[:,1]^2) #scale x so that output is in L2
+        x_scaled = tf.math.divide(x,(1 + inputs[:,1]^2)) #scale x so that output is in L2
         
         return x_scaled
 
