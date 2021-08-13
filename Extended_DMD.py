@@ -83,13 +83,21 @@ class MLPBlock(tf.keras.Model):
 
 # The loss function to be optimized
 def loss(model, inputs, K):
+    # define regularization constants
     lambda1 = 0.01
+    lambda_G = (10**-3)/num_observables # divide by num_observables since the Frobenius norm scales with the size of the matrix
 
+    # define input data
     layer1 = tf.transpose(inputs[0, :, :])
     layer2 = tf.transpose(inputs[1, :, :])
 
-    error = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1)) + lambda1*tf.norm(K,ord=2)
+    # compute G
+    X_data = np.expand_dims(inputs[0, :, :], axis=-1)
+    Theta_X = np.squeeze(model(X_data))
+    G_new = np.matmul(np.transpose(Theta_X),Theta_X)
 
+    # define loss
+    error = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1)) + lambda_G*tf.norm(G_new - np.identity(num_observables), ord = 'fro')
     return error
 
 def grad(model, inputs, K):
@@ -176,3 +184,7 @@ print('Complete eig comp for lambda_DMD')
 print("Eigenvalues:")
 for i in range(num_observables):
 	print("Deep DMD: {}, Extended DMD: {}".format(lambda_deepDMD_sorted[i], lambda_eDMD_sorted[i]))
+
+print("Norm of Deep DMD K = {}".format(tf.linalg.norm(K_deep,ord=2)))
+print("Norm of Extended DMD K = {}".format(tf.linalg.norm(K_dmd,ord=2)))
+print("Condition number of Extended DMD G = {}".format(np.linalg.cond(G_new)))

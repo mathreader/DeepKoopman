@@ -9,7 +9,7 @@ data_name = 'Pendulum'
 len_time = 51
 num_shifts = len_time - 1
 data_file_path = './DeepDMD_results/Pendulum_no_reg{}_error.csv'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
-max_time = 60; #time to run training, in minutes
+max_time = 5; #time to run training, in minutes
 num_observables = 10;
 
 # Function for stacking the data
@@ -87,12 +87,21 @@ class MLPBlock(tf.keras.Model):
 
 # The loss function to be optimized
 def loss(model, inputs, K):
+    # define regularization constants
     lambda1 = 0.01
+    lambda_G = (10**-3)/num_observables # divide by num_observables since the Frobenius norm scales with the size of the matrix
 
+    # define input data
     layer1 = tf.transpose(inputs[0, :, :])
     layer2 = tf.transpose(inputs[1, :, :])
 
-    error = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1))
+    # compute G
+    X_data = np.expand_dims(inputs[0, :, :], axis=-1)
+    Theta_X = np.squeeze(model(X_data))
+    G_new = np.matmul(np.transpose(Theta_X),Theta_X)
+
+    # define loss
+    error = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1)) + lambda_G*tf.norm(G_new - np.identity(num_observables), ord = 'fro')
     return error
 
 def grad(model, inputs, K):
