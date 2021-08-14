@@ -92,12 +92,12 @@ def loss(model, inputs, K):
     layer2 = tf.transpose(inputs[1, :, :])
 
     # compute G
-    X_data = np.expand_dims(inputs[0, :, :], axis=-1)
-    Theta_X = np.squeeze(model(X_data))
-    G_new = np.matmul(np.transpose(Theta_X),Theta_X)
+    #X_data = np.expand_dims(inputs[0, :, :], axis=-1)
+    Theta_X = np.squeeze(model(layer1))
+    G_new = np.matmul(Theta_X,np.transpose(Theta_X))
 
     # define loss
-    error = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1)) + lambda_G*tf.norm(G_new - np.identity(num_observables), ord = 'fro')
+    error = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1)) + lambda_G*tf.norm(G_new - np.identity(num_observables))
     return error
 
 def grad(model, inputs, K):
