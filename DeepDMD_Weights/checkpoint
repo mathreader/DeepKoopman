@@ -1,2 +1,2 @@
-model_checkpoint_path: "weights_1"
-all_model_checkpoint_paths: "weights_1"
+model_checkpoint_path: "weights_no_reg"
+all_model_checkpoint_paths: "weights_no_reg"
