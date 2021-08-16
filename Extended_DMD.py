@@ -53,6 +53,8 @@ data_val = np.loadtxt(('./data/%s_val_x.csv' % (data_name)), delimiter=',', dtyp
 data_orig_stacked = stack_data(data_orig, num_shifts, len_time)
 data_val_stacked = stack_data(data_val, num_shifts, len_time)
 
+print(data_orig_stacked.shape)
+
 # Custom Linear Layer
 class Linear(keras.layers.Layer):
     def __init__(self, input_dim=32, output_dim=32, title=''):
@@ -111,8 +113,8 @@ def grad(model, inputs, K):
 model = MLPBlock()
 model.built = True
 #load weights
-model.load_weights('./DeepDMD_Weights/weights_no_reg')
-K_deep = np.load('./DeepDMD_Weights/K_no_reg.npy') #load K from deep DMD loss
+model.load_weights('./DeepDMD_Weights/weights_no_reg_split_loss')
+K_deep = np.load('./DeepDMD_Weights/K_no_reg_split_loss.npy') #load K from deep DMD loss
 
 ## compute K_dmd using extended DMD with the neural network as the dictionary functions
 #construct matrix Theta

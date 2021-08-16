@@ -90,6 +90,7 @@ def loss(model, inputs, K):
     # define regularization constants
     lambda1 = 0.01
     lambda_G = (10**-1)/num_observables # divide by num_observables since the Frobenius norm scales with the size of the matrix
+    lambda_cond = 0.01
 
     # define input data
     layer1 = tf.transpose(inputs[0, :, :])
@@ -97,16 +98,20 @@ def loss(model, inputs, K):
 
     # compute G
     #X_data = np.expand_dims(inputs[0, :, :], axis=-1)
-    Theta_X = np.squeeze(model(layer1))
-    G_new = np.matmul(Theta_X,np.transpose(Theta_X))
+    Theta_X = tf.squeeze(model(layer1))
+    G_new = tf.linalg.matmul(Theta_X,np.transpose(Theta_X))
 
     # define loss
-    error = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1)) + lambda_G*tf.norm(G_new - np.identity(num_observables))
-    return error
+    error1 = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1))
+    error2 = lambda_G*tf.norm(G_new - np.identity(num_observables))
+    error3 = lambda_cond*tf.norm(G_new)*tf.norm(tf.linalg.inv(G_new))
+    return error1, error2, error3
+
 
 def grad(model, inputs, K):
     with tf.GradientTape() as tape:
-        loss_value = loss(model, inputs, K)
+        error1, error2, error3 = loss(model, inputs, K)
+        loss_value = error1 + error3
     return tape.gradient(loss_value, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
         model.linear_2.b, model.linear_3.w, model.linear_3.b, K])
 
@@ -138,24 +143,28 @@ while ((time.time() - start_time) < max_time*60):
     
     if (epoch_num-1) % 10 == 0:
         # Evaluation step
-        train_loss    = loss(model, data_orig_stacked, K)
-        val_loss      = loss(model, data_val_stacked, K)
+        train_error_1, train_error_2, train_error_3    = loss(model, data_orig_stacked, K)
+        val_error_1, val_error_2, val_error_3      = loss(model, data_val_stacked, K)
 
         #print results
         print("Epoch number {}".format(epoch_num))
-        print("Training Loss: {:.5e}".format(train_loss))
-        print("Evaluation Loss: {:.5e}".format(val_loss))
+        print("Training True Loss: {:.5e}".format(train_error_1))
+        print("Evaluation True Loss: {:.5e}".format(val_error_1))
+        print("Training Regularization Loss: {:.5e}".format(train_error_2))
+        print("Evaluation Regularization Loss: {:.5e}".format(val_error_2))
+        print("Training G Condition Number: {:.5e}".format(train_error_3))
+        print("Evaluation G Condition Number: {:.5e}".format(val_error_3))
 
         # print loss data to file
-        f.write("{}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_loss, val_loss))
+        f.write("{}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_error_1, train_error_2, train_error_3, val_error_1, val_error_2, val_error_3))
 
     epoch_num = epoch_num + 1;
 
 f.close() 
 
 #save weights
-model.save_weights('./DeepDMD_Weights/weights_no_reg')
+model.save_weights('./DeepDMD_Weights/weights_no_reg_split_loss_c_0_01')
 
 #save K
-np.save('./DeepDMD_Weights/K_no_reg.npy', K.numpy())
+np.save('./DeepDMD_Weights/K_no_reg_split_loss_c_0_01.npy', K.numpy())
 
