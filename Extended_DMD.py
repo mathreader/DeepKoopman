@@ -113,8 +113,8 @@ def grad(model, inputs, K):
 model = MLPBlock()
 model.built = True
 #load weights
-model.load_weights('./DeepDMD_Weights/weights_no_reg_split_loss')
-K_deep = np.load('./DeepDMD_Weights/K_no_reg_split_loss.npy') #load K from deep DMD loss
+model.load_weights('./DeepDMD_Weights/weights_no_reg_split_loss_c_0_01')
+K_deep = np.load('./DeepDMD_Weights/K_no_reg_split_loss_c_0_01.npy') #load K from deep DMD loss
 
 ## compute K_dmd using extended DMD with the neural network as the dictionary functions
 #construct matrix Theta
@@ -179,6 +179,8 @@ print('Complete eig comp for K_dmd')
 #print eigenvalues from largest to smallest
 lambda_deepDMD_sorted = np.sort(lambda_deepDMD)
 lambda_eDMD_sorted = np.sort(lambda_eDMD)
+lambda_deepDMD_sorted = np.absolute(lambda_deepDMD_sorted)
+lambda_eDMD_sorted = np.absolute(lambda_eDMD_sorted)
 
 print('Complete eig comp for lambda_DMD')
 
@@ -190,3 +192,4 @@ for i in range(num_observables):
 print("Norm of Deep DMD K = {}".format(tf.linalg.norm(K_deep,ord=2)))
 print("Norm of Extended DMD K = {}".format(tf.linalg.norm(K_dmd,ord=2)))
 print("Condition number of Extended DMD G = {}".format(np.linalg.cond(G_new)))
+print("Frobenius Norm Difference G = {}".format(np.linalg.norm(K_deep - K_dmd)))

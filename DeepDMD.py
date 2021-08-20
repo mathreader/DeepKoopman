@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.linalg.linalg import norm
 import tensorflow as tf
 from tensorflow import keras
 tf.keras.backend.set_floatx('float64')
@@ -9,7 +10,7 @@ data_name = 'Pendulum'
 len_time = 51
 num_shifts = len_time - 1
 data_file_path = './DeepDMD_results/Pendulum_no_reg{}_error.csv'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
-max_time = 60; #time to run training, in minutes
+max_time = 2; #time to run training, in minutes
 num_observables = 10;
 
 # Function for stacking the data
@@ -101,17 +102,43 @@ def loss(model, inputs, K):
     Theta_X = tf.squeeze(model(layer1))
     G_new = tf.linalg.matmul(Theta_X,np.transpose(Theta_X))
 
+
+    # Power iteration
+    test_vector = tf.random.uniform((num_observables, 1), minval=0, maxval=1, dtype=tf.dtypes.float64)
+    test_vector = test_vector / tf.norm(test_vector)
+
+    test_vector_orig = test_vector
+    test_vector_inv = test_vector
+    for i in range(3):
+        test_vector_orig = tf.linalg.matmul(G_new, test_vector_orig)
+        test_vector_inv = tf.linalg.solve(G_new, test_vector_inv)
+        test_vector_orig = test_vector_orig / tf.norm(test_vector_orig)
+        test_vector_inv = test_vector_inv / tf.norm(test_vector_inv)
+
+    
+    norm_approx_G = tf.squeeze(tf.linalg.matmul(tf.transpose(test_vector_orig),tf.linalg.matmul(G_new, test_vector_orig)))
+
+    #print(tf.transpose(test_vector_inv))
+    #print(G_new)
+    #print(tf.linalg.matmul(G_new, test_vector_inv))
+    
+    norm_approx_inv_G = tf.squeeze(tf.linalg.matmul(tf.transpose(test_vector_inv),tf.linalg.matmul(tf.linalg.inv(G_new), test_vector_inv)))
+
+    #print(norm_approx_G)
+    #print(norm_approx_inv_G)
+
     # define loss
     error1 = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1))
     error2 = lambda_G*tf.norm(G_new - np.identity(num_observables))
     error3 = lambda_cond*tf.norm(G_new)*tf.norm(tf.linalg.inv(G_new))
-    return error1, error2, error3
+    error4 = lambda_cond * norm_approx_G * norm_approx_inv_G
+    return error1, error2, error3, error4
 
 
 def grad(model, inputs, K):
     with tf.GradientTape() as tape:
-        error1, error2, error3 = loss(model, inputs, K)
-        loss_value = error1 + error3
+        error1, error2, error3, error4 = loss(model, inputs, K)
+        loss_value = error1 + error4
     return tape.gradient(loss_value, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
         model.linear_2.b, model.linear_3.w, model.linear_3.b, K])
 
@@ -143,8 +170,8 @@ while ((time.time() - start_time) < max_time*60):
     
     if (epoch_num-1) % 10 == 0:
         # Evaluation step
-        train_error_1, train_error_2, train_error_3    = loss(model, data_orig_stacked, K)
-        val_error_1, val_error_2, val_error_3      = loss(model, data_val_stacked, K)
+        train_error_1, train_error_2, train_error_3, train_error_4    = loss(model, data_orig_stacked, K)
+        val_error_1, val_error_2, val_error_3, val_error_4      = loss(model, data_val_stacked, K)
 
         #print results
         print("Epoch number {}".format(epoch_num))
@@ -154,17 +181,19 @@ while ((time.time() - start_time) < max_time*60):
         print("Evaluation Regularization Loss: {:.5e}".format(val_error_2))
         print("Training G Condition Number: {:.5e}".format(train_error_3))
         print("Evaluation G Condition Number: {:.5e}".format(val_error_3))
+        print("Training G Condition Number Approximate: {:.5e}".format(train_error_4))
+        print("Evaluation G Condition Number Approximate: {:.5e}".format(val_error_4))
 
         # print loss data to file
-        f.write("{}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_error_1, train_error_2, train_error_3, val_error_1, val_error_2, val_error_3))
+        f.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_error_1, train_error_2, train_error_3, train_error_4, val_error_1, val_error_2, val_error_3, val_error_4))
 
     epoch_num = epoch_num + 1;
 
 f.close() 
 
 #save weights
-model.save_weights('./DeepDMD_Weights/weights_no_reg_split_loss_c_0_01')
+model.save_weights('./DeepDMD_Weights/weights_approx_cond_num')
 
 #save K
-np.save('./DeepDMD_Weights/K_no_reg_split_loss_c_0_01.npy', K.numpy())
+np.save('./DeepDMD_Weights/K_approx_cond_num.npy', K.numpy())
 

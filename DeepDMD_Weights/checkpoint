@@ -1,2 +1,2 @@
-model_checkpoint_path: "weights_no_reg_split_loss"
-all_model_checkpoint_paths: "weights_no_reg_split_loss"
+model_checkpoint_path: "weights_approx_cond_num"
+all_model_checkpoint_paths: "weights_approx_cond_num"
