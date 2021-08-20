@@ -13,8 +13,6 @@ data_file_path = './DeepDMD_results/Pendulum_no_reg{}_error.csv'.format(datetime
 max_time = 2; #time to run training, in minutes
 num_observables = 10;
 
-test_vector = tf.random.uniform((num_observables, 1), minval=0, maxval=1, dtype=tf.dtypes.float64)
-test_vector = test_vector / tf.norm(test_vector)
 
 # Function for stacking the data
 def stack_data(data, num_shifts, len_time):
@@ -95,6 +93,7 @@ def loss(model, inputs, K):
     lambda1 = 0.01
     lambda_G = (10**-1)/num_observables # divide by num_observables since the Frobenius norm scales with the size of the matrix
     lambda_cond = 0.01
+    lambda_SL = 10.
 
     # define input data
     layer1 = tf.transpose(inputs[0, :, :])
@@ -103,57 +102,72 @@ def loss(model, inputs, K):
     # compute G
     #X_data = np.expand_dims(inputs[0, :, :], axis=-1)
     Theta_X = tf.squeeze(model(layer1))
-    G_new = tf.linalg.matmul(Theta_X,np.transpose(Theta_X))
-    #print(tf.norm(G_new, axis=[-2, -1], ord=2))
-    #print(np.linalg.norm(G_new, ord=2))
-    #print(tf.norm(G_new, ord=2))
+    Theta_Y = tf.squeeze(model(layer2))
 
-    # Power iteration
+    G = tf.linalg.matmul(Theta_X, np.transpose(Theta_X))
+    A = tf.linalg.matmul(Theta_X, np.transpose(Theta_Y))
+    L = tf.linalg.matmul(Theta_Y, np.transpose(Theta_Y))
     
-    test_vector_orig = test_vector
-    test_vector_inv = test_vector
-    for i in range(30):
-        test_vector_orig = tf.linalg.matmul(G_new, test_vector_orig)
-        test_vector_inv = tf.linalg.solve(G_new, test_vector_inv)
-        test_vector_orig = test_vector_orig / tf.norm(test_vector_orig)
-        test_vector_inv = test_vector_inv / tf.norm(test_vector_inv)
-        norm_approx_G = tf.squeeze(tf.linalg.matmul(tf.transpose(test_vector_orig),tf.linalg.matmul(G_new, test_vector_orig)))
-        norm_approx_inv_G = tf.squeeze(tf.linalg.matmul(tf.transpose(test_vector_inv),tf.linalg.matmul(tf.linalg.inv(G_new), test_vector_inv)))
-        
-        print("Norm True Cond: {:.5e}, Approx Cond {:.5e}, ".format(lambda_cond*tf.norm(G_new, axis=[-2, -1], ord=2)*tf.norm(tf.linalg.inv(G_new), axis=[-2, -1], ord=2), lambda_cond * norm_approx_G * norm_approx_inv_G))
-
-    
-    norm_approx_G = tf.squeeze(tf.linalg.matmul(tf.transpose(test_vector_orig),tf.linalg.matmul(G_new, test_vector_orig)))
-
-    #print(tf.transpose(test_vector_inv))
-    #print(G_new)
-    #print(tf.linalg.matmul(G_new, test_vector_inv))
-    
-    norm_approx_inv_G = tf.squeeze(tf.linalg.matmul(tf.transpose(test_vector_inv),tf.linalg.matmul(tf.linalg.inv(G_new), test_vector_inv)))
-
-    # print('Compare Norm of original:')
-    # print(tf.norm(G_new))
-    # print(norm_approx_G)
-
-    # print('Compare Norm of inverse:')
-    # print(tf.norm(tf.linalg.inv(G_new)))
-    # print(norm_approx_inv_G)
+    cond_num = approx_cond_num(G, 30)
+    spectral_leakage = spectral_leakage_loss(G, A, L, 30)
+    #print("Spectral Leakage = {}".format(spectral_leakage))
 
     # define loss
     error1 = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1))
-    error2 = lambda_G*tf.norm(G_new - np.identity(num_observables))
-    error3 = lambda_cond*tf.norm(G_new, axis=[-2, -1], ord=2)*tf.norm(tf.linalg.inv(G_new), axis=[-2, -1], ord=2)
-    error4 = lambda_cond * norm_approx_G * norm_approx_inv_G
+    error2 = lambda_G*tf.norm(G - np.identity(num_observables))
+    #error3 = lambda_cond*tf.norm(G_new, axis=[-2, -1], ord=2)*tf.norm(tf.linalg.inv(G_new), axis=[-2, -1], ord=2)
+    error3 = lambda_cond * cond_num
+    error4 = lambda_SL * spectral_leakage
 
     #print('Error of norm '+str(np.abs(norm_approx_G -tf.norm(G_new))))
     #print('Error of norm inverse '+str(np.abs(norm_approx_inv_G -norm(tf.linalg.inv(G_new)))))
     return error1, error2, error3, error4
 
 
+def approx_cond_num(G, num_iter):
+    # Power iteration
+    test_vector = tf.random.uniform((num_observables, 1), minval=0, maxval=1, dtype=tf.dtypes.float64)
+    test_vector = test_vector / tf.norm(test_vector)
+    
+    test_vector_orig = test_vector
+    test_vector_inv = test_vector
+    for i in range(num_iter):
+        test_vector_orig = tf.linalg.matmul(G, test_vector_orig)
+        test_vector_inv = tf.linalg.solve(G, test_vector_inv)
+        test_vector_orig = test_vector_orig / tf.norm(test_vector_orig)
+        test_vector_inv = test_vector_inv / tf.norm(test_vector_inv)
+        
+        #print("Norm True Cond: {:.5e}, Approx Cond {:.5e}, ".format(lambda_cond*tf.norm(G_new, axis=[-2, -1], ord=2)*tf.norm(tf.linalg.inv(G), axis=[-2, -1], ord=2), lambda_cond * norm_approx_G * norm_approx_inv_G))
+
+    
+    norm_approx_G = tf.squeeze(tf.linalg.matmul(tf.transpose(test_vector_orig),tf.linalg.matmul(G, test_vector_orig)))
+    norm_approx_inv_G = tf.squeeze(tf.linalg.matmul(tf.transpose(test_vector_inv),tf.linalg.matmul(tf.linalg.inv(G), test_vector_inv)))
+
+    return norm_approx_G * norm_approx_inv_G
+
+def spectral_leakage_loss(G, A, L, num_iter):
+    test_vector = tf.random.uniform((num_observables, 1), minval=0, maxval=1, dtype=tf.dtypes.float64)
+    test_vector = test_vector / tf.sqrt(tf.linalg.matmul(tf.linalg.matmul(tf.transpose(test_vector),G),test_vector))
+
+    for i in range(num_iter):
+        w1 = tf.matmul(L, test_vector)
+        w2 = tf.linalg.matmul(tf.transpose(A) ,tf.linalg.solve(G,tf.linalg.matmul(tf.transpose(A), test_vector)))
+        w = tf.linalg.solve(G, w1 - w2)
+
+        #normalize test vector
+        test_vector = w / tf.sqrt(tf.linalg.matmul(tf.linalg.matmul(tf.transpose(w), G), w))
+
+    w1 = tf.matmul(L, test_vector)
+    w2 = tf.linalg.matmul(tf.transpose(A) ,tf.linalg.solve(G,tf.linalg.matmul(tf.transpose(A), test_vector)))
+
+    spectral_leakage = (tf.linalg.matmul(tf.transpose(test_vector), w1-w2))/(tf.linalg.matmul(tf.linalg.matmul(tf.transpose(test_vector), G), test_vector))
+
+    return tf.squeeze(spectral_leakage)
+
 def grad(model, inputs, K):
     with tf.GradientTape() as tape:
         error1, error2, error3, error4 = loss(model, inputs, K)
-        loss_value = error1 + error4
+        loss_value = error1 + error3 + error4
     return tape.gradient(loss_value, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
         model.linear_2.b, model.linear_3.w, model.linear_3.b, K])
 
@@ -186,7 +200,7 @@ while ((time.time() - start_time) < max_time*60):
     if (epoch_num-1) % 10 == 0:
         # Evaluation step
         train_error_1, train_error_2, train_error_3, train_error_4    = loss(model, data_orig_stacked, K)
-        val_error_1, val_error_2, val_error_3, val_error_4      = loss(model, data_val_stacked, K)
+        val_error_1, val_error_2, val_error_3, val_error_4            = loss(model, data_val_stacked, K)
 
         #print results
         print("Epoch number {}".format(epoch_num))
@@ -196,8 +210,9 @@ while ((time.time() - start_time) < max_time*60):
         print("Evaluation Regularization Loss: {:.5e}".format(val_error_2))
         print("Training G Condition Number: {:.5e}".format(train_error_3))
         print("Evaluation G Condition Number: {:.5e}".format(val_error_3))
-        print("Training G Condition Number Approximate: {:.5e}".format(train_error_4))
-        print("Evaluation G Condition Number Approximate: {:.5e}".format(val_error_4))
+        print("Training Spectral Leakage: {:.5e}".format(train_error_4))
+        print("Evaluation Spectral Leakage: {:.5e}".format(val_error_4))
+
 
         # print loss data to file
         f.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_error_1, train_error_2, train_error_3, train_error_4, val_error_1, val_error_2, val_error_3, val_error_4))
