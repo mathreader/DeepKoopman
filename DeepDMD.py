@@ -13,6 +13,9 @@ data_file_path = './DeepDMD_results/Pendulum_no_reg{}_error.csv'.format(datetime
 max_time = 2; #time to run training, in minutes
 num_observables = 10;
 
+test_vector = tf.random.uniform((num_observables, 1), minval=0, maxval=1, dtype=tf.dtypes.float64)
+test_vector = test_vector / tf.norm(test_vector)
+
 # Function for stacking the data
 def stack_data(data, num_shifts, len_time):
     """Stack data from a 2D array into a 3D array.
@@ -101,19 +104,23 @@ def loss(model, inputs, K):
     #X_data = np.expand_dims(inputs[0, :, :], axis=-1)
     Theta_X = tf.squeeze(model(layer1))
     G_new = tf.linalg.matmul(Theta_X,np.transpose(Theta_X))
-
+    #print(tf.norm(G_new, axis=[-2, -1], ord=2))
+    #print(np.linalg.norm(G_new, ord=2))
+    #print(tf.norm(G_new, ord=2))
 
     # Power iteration
-    test_vector = tf.random.uniform((num_observables, 1), minval=0, maxval=1, dtype=tf.dtypes.float64)
-    test_vector = test_vector / tf.norm(test_vector)
-
+    
     test_vector_orig = test_vector
     test_vector_inv = test_vector
-    for i in range(3):
+    for i in range(30):
         test_vector_orig = tf.linalg.matmul(G_new, test_vector_orig)
         test_vector_inv = tf.linalg.solve(G_new, test_vector_inv)
         test_vector_orig = test_vector_orig / tf.norm(test_vector_orig)
         test_vector_inv = test_vector_inv / tf.norm(test_vector_inv)
+        norm_approx_G = tf.squeeze(tf.linalg.matmul(tf.transpose(test_vector_orig),tf.linalg.matmul(G_new, test_vector_orig)))
+        norm_approx_inv_G = tf.squeeze(tf.linalg.matmul(tf.transpose(test_vector_inv),tf.linalg.matmul(tf.linalg.inv(G_new), test_vector_inv)))
+        
+        print("Norm True Cond: {:.5e}, Approx Cond {:.5e}, ".format(lambda_cond*tf.norm(G_new, axis=[-2, -1], ord=2)*tf.norm(tf.linalg.inv(G_new), axis=[-2, -1], ord=2), lambda_cond * norm_approx_G * norm_approx_inv_G))
 
     
     norm_approx_G = tf.squeeze(tf.linalg.matmul(tf.transpose(test_vector_orig),tf.linalg.matmul(G_new, test_vector_orig)))
@@ -124,14 +131,22 @@ def loss(model, inputs, K):
     
     norm_approx_inv_G = tf.squeeze(tf.linalg.matmul(tf.transpose(test_vector_inv),tf.linalg.matmul(tf.linalg.inv(G_new), test_vector_inv)))
 
-    #print(norm_approx_G)
-    #print(norm_approx_inv_G)
+    # print('Compare Norm of original:')
+    # print(tf.norm(G_new))
+    # print(norm_approx_G)
+
+    # print('Compare Norm of inverse:')
+    # print(tf.norm(tf.linalg.inv(G_new)))
+    # print(norm_approx_inv_G)
 
     # define loss
     error1 = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1))
     error2 = lambda_G*tf.norm(G_new - np.identity(num_observables))
-    error3 = lambda_cond*tf.norm(G_new)*tf.norm(tf.linalg.inv(G_new))
+    error3 = lambda_cond*tf.norm(G_new, axis=[-2, -1], ord=2)*tf.norm(tf.linalg.inv(G_new), axis=[-2, -1], ord=2)
     error4 = lambda_cond * norm_approx_G * norm_approx_inv_G
+
+    #print('Error of norm '+str(np.abs(norm_approx_G -tf.norm(G_new))))
+    #print('Error of norm inverse '+str(np.abs(norm_approx_inv_G -norm(tf.linalg.inv(G_new)))))
     return error1, error2, error3, error4
 
 
