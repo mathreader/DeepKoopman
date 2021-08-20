@@ -90,8 +90,6 @@ class MLPBlock(tf.keras.Model):
 # The loss function to be optimized
 def loss(model, inputs, K):
     # define regularization constants
-    lambda1 = 0.01
-    lambda_G = (10**-1)/num_observables # divide by num_observables since the Frobenius norm scales with the size of the matrix
     lambda_cond = 0.01
     lambda_SL = 10.
 
@@ -113,15 +111,14 @@ def loss(model, inputs, K):
     #print("Spectral Leakage = {}".format(spectral_leakage))
 
     # define loss
-    error1 = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1))
-    error2 = lambda_G*tf.norm(G - np.identity(num_observables))
+    prediction_error = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1))
     #error3 = lambda_cond*tf.norm(G_new, axis=[-2, -1], ord=2)*tf.norm(tf.linalg.inv(G_new), axis=[-2, -1], ord=2)
-    error3 = lambda_cond * cond_num
-    error4 = lambda_SL * spectral_leakage
+    cond_num_error = lambda_cond * cond_num
+    SL_error = lambda_SL * spectral_leakage
 
     #print('Error of norm '+str(np.abs(norm_approx_G -tf.norm(G_new))))
     #print('Error of norm inverse '+str(np.abs(norm_approx_inv_G -norm(tf.linalg.inv(G_new)))))
-    return error1, error2, error3, error4
+    return prediction_error, cond_num_error, SL_error
 
 
 def approx_cond_num(G, num_iter):
@@ -166,8 +163,8 @@ def spectral_leakage_loss(G, A, L, num_iter):
 
 def grad(model, inputs, K):
     with tf.GradientTape() as tape:
-        error1, error2, error3, error4 = loss(model, inputs, K)
-        loss_value = error1 + error3 + error4
+        prediction_error, cond_num_error, SL_error = loss(model, inputs, K)
+        loss_value = prediction_error + cond_num_error + SL_error
     return tape.gradient(loss_value, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
         model.linear_2.b, model.linear_3.w, model.linear_3.b, K])
 
@@ -190,6 +187,7 @@ f.write("Epoch #, Runtime, Train Loss, Val Loss\n")
 
 epoch_num = 1;
 start_time = time.time();
+best_val_loss = 10**8
 
 while ((time.time() - start_time) < max_time*60):
     # Training step
@@ -199,31 +197,33 @@ while ((time.time() - start_time) < max_time*60):
     
     if (epoch_num-1) % 10 == 0:
         # Evaluation step
-        train_error_1, train_error_2, train_error_3, train_error_4    = loss(model, data_orig_stacked, K)
-        val_error_1, val_error_2, val_error_3, val_error_4            = loss(model, data_val_stacked, K)
+        train_prediction_error, train_cond_num_error, train_SL_error    = loss(model, data_orig_stacked, K)
+        val_prediction_error, val_cond_num_error, val_SL_error          = loss(model, data_val_stacked, K)
 
         #print results
         print("Epoch number {}".format(epoch_num))
-        print("Training True Loss: {:.5e}".format(train_error_1))
-        print("Evaluation True Loss: {:.5e}".format(val_error_1))
-        print("Training Regularization Loss: {:.5e}".format(train_error_2))
-        print("Evaluation Regularization Loss: {:.5e}".format(val_error_2))
-        print("Training G Condition Number: {:.5e}".format(train_error_3))
-        print("Evaluation G Condition Number: {:.5e}".format(val_error_3))
-        print("Training Spectral Leakage: {:.5e}".format(train_error_4))
-        print("Evaluation Spectral Leakage: {:.5e}".format(val_error_4))
+        print("Training Prediction Loss: {:.5e}".format(train_prediction_error))
+        print("Evaluation Prediction Loss: {:.5e}".format(val_prediction_error))
+
+        print("Training G Condition Number: {:.5e}".format(train_cond_num_error))
+        print("Evaluation G Condition Number: {:.5e}".format(val_cond_num_error))
+
+        print("Training Spectral Leakage: {:.5e}".format(train_SL_error))
+        print("Evaluation Spectral Leakage: {:.5e}".format(val_SL_error))
+
+        if (val_prediction_error < best_val_loss):
+            best_val_loss = val_prediction_error
+            print("\nNew best prediction loss: {:.5e}\n".format(best_val_loss))
+
+            # save weights and K
+            model.save_weights('./DeepDMD_Weights/weights_experiment_x')
+            np.save('./DeepDMD_Weights/K_experiment_x.npy', K.numpy())
 
 
         # print loss data to file
-        f.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_error_1, train_error_2, train_error_3, train_error_4, val_error_1, val_error_2, val_error_3, val_error_4))
+        f.write("{}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_prediction_error, train_cond_num_error, train_SL_error, val_prediction_error, val_cond_num_error, val_SL_error))
 
     epoch_num = epoch_num + 1;
 
 f.close() 
-
-#save weights
-model.save_weights('./DeepDMD_Weights/weights_approx_cond_num')
-
-#save K
-np.save('./DeepDMD_Weights/K_approx_cond_num.npy', K.numpy())
 
