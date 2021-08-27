@@ -9,8 +9,8 @@ import datetime
 data_name = 'Pendulum'
 len_time = 51
 num_shifts = len_time - 1
-data_file_path = './DeepDMD_results/Pendulum_no_reg{}_error.csv'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
-max_time = 2; #time to run training, in minutes
+data_file_path = './DeepDMD_results/Pendulum_experiment_4_10_{}_error.csv'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
+max_time = 60; #time to run training, in minutes
 num_observables = 10;
 
 
@@ -90,7 +90,7 @@ class MLPBlock(tf.keras.Model):
 # The loss function to be optimized
 def loss(model, inputs, K):
     # define regularization constants
-    lambda_cond = 0.01
+    lambda_cond = 0.001
     lambda_SL = 10.
 
     # define input data
@@ -216,8 +216,8 @@ while ((time.time() - start_time) < max_time*60):
             print("\nNew best prediction loss: {:.5e}\n".format(best_val_loss))
 
             # save weights and K
-            model.save_weights('./DeepDMD_Weights/weights_experiment_x')
-            np.save('./DeepDMD_Weights/K_experiment_x.npy', K.numpy())
+            model.save_weights('./DeepDMD_Weights/weights_experiment_4_10')
+            np.save('./DeepDMD_Weights/K_experiment_4_10.npy', K.numpy())
 
 
         # print loss data to file
