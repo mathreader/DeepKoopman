@@ -1,9 +1,15 @@
 from matplotlib import pyplot
 import numpy as np
 
-extension = 'experiment_1_10_2021_08_20_17_30_50_887276' #experiment 1
+#extension = 'experiment_1_10_2021_08_20_17_30_50_887276' #experiment 1
 #extension = 'experiment_2_10_2021_08_20_17_32_21_985846' #experiment 2
-extension = 'experiment_4_10_2021_08_27_09_45_22_292512' #experiment 4
+#extension = 'experiment_4_10_2021_08_27_09_45_22_292512' #experiment 4
+
+# New ones 
+extension = 'experiment_4_10_2021_08_28_18_31_30_929630' #actually experiment 5, though forgot to change name, frobenius squared norm + condition number on K + spectral leakage
+
+# 
+extension = 'experiment_6_10_2021_08_29_16_17_09_063377'
 
 ## Load Data
 f = open('./DeepDMD_results/Pendulum_' + extension + '_error.csv')
@@ -22,6 +28,7 @@ data['val_cond_num'] 	= np.zeros(len_f)
 data['val_SL'] 			= np.zeros(len_f)
 
 for i in range(0,len_f):
+	print(i)
 	line = f_lines[i + 1].strip('\n').split(', ')
 
 	data['epochs'][i] 			= int(line[0]);

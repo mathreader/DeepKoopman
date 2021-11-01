@@ -113,8 +113,8 @@ def grad(model, inputs, K):
 model = MLPBlock()
 model.built = True
 #load weights
-model.load_weights('./DeepDMD_Weights/weights_experiment_4_10')
-K_deep = np.load('./DeepDMD_Weights/K_experiment_4_10.npy') #load K from deep DMD loss
+model.load_weights('./DeepDMD_Weights/weights_experiment_6_10')
+K_deep = np.load('./DeepDMD_Weights/K_experiment_6_10.npy') #load K from deep DMD loss
 
 ## compute K_dmd using extended DMD with the neural network as the dictionary functions
 #construct matrix Theta

@@ -9,9 +9,10 @@ import datetime
 data_name = 'Pendulum'
 len_time = 51
 num_shifts = len_time - 1
-data_file_path = './DeepDMD_results/Pendulum_experiment_4_10_{}_error.csv'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
+data_file_path = './DeepDMD_results/Pendulum_experiment_6_10_{}_error.csv'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
 max_time = 60; #time to run training, in minutes
 num_observables = 10;
+reg_param = 1e-5
 
 
 # Function for stacking the data
@@ -101,16 +102,21 @@ def loss(model, inputs, K):
     #X_data = np.expand_dims(inputs[0, :, :], axis=-1)
     Theta_X = tf.squeeze(model(layer1))
     Theta_Y = tf.squeeze(model(layer2))
+    #print('Matrix Theta_X:')
+    #print(Theta_X)
 
-    G = tf.linalg.matmul(Theta_X, np.transpose(Theta_X))
-    A = tf.linalg.matmul(Theta_X, np.transpose(Theta_Y))
-    L = tf.linalg.matmul(Theta_Y, np.transpose(Theta_Y))
+    G = tf.linalg.matmul(Theta_X, tf.transpose(Theta_X))
+    A = tf.linalg.matmul(Theta_X, tf.transpose(Theta_Y))
+    L = tf.linalg.matmul(Theta_Y, tf.transpose(Theta_Y))
+    #print('Matrix G')
+    #print(G)
     
     cond_num = approx_cond_num(G, 30)
     spectral_leakage = spectral_leakage_loss(G, A, L, 30)
     #print("Spectral Leakage = {}".format(spectral_leakage))
 
     # define loss
+    #prediction_error = tf.reduce_mean(tf.square(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord='euclidean', axis=1)))
     prediction_error = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1))
     #error3 = lambda_cond*tf.norm(G_new, axis=[-2, -1], ord=2)*tf.norm(tf.linalg.inv(G_new), axis=[-2, -1], ord=2)
     cond_num_error = lambda_cond * cond_num
@@ -129,8 +135,10 @@ def approx_cond_num(G, num_iter):
     test_vector_orig = test_vector
     test_vector_inv = test_vector
     for i in range(num_iter):
+
         test_vector_orig = tf.linalg.matmul(G, test_vector_orig)
         test_vector_inv = tf.linalg.solve(G, test_vector_inv)
+        
         test_vector_orig = test_vector_orig / tf.norm(test_vector_orig)
         test_vector_inv = test_vector_inv / tf.norm(test_vector_inv)
         
@@ -165,6 +173,7 @@ def grad(model, inputs, K):
     with tf.GradientTape() as tape:
         prediction_error, cond_num_error, SL_error = loss(model, inputs, K)
         loss_value = prediction_error + cond_num_error + SL_error
+
     return tape.gradient(loss_value, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
         model.linear_2.b, model.linear_3.w, model.linear_3.b, K])
 
@@ -216,8 +225,8 @@ while ((time.time() - start_time) < max_time*60):
             print("\nNew best prediction loss: {:.5e}\n".format(best_val_loss))
 
             # save weights and K
-            model.save_weights('./DeepDMD_Weights/weights_experiment_4_10')
-            np.save('./DeepDMD_Weights/K_experiment_4_10.npy', K.numpy())
+            model.save_weights('./DeepDMD_Weights/weights_experiment_6_10')
+            np.save('./DeepDMD_Weights/K_experiment_6_10.npy', K.numpy())
 
 
         # print loss data to file
