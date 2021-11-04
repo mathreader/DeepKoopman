@@ -9,7 +9,7 @@ import datetime
 data_name = 'Pendulum'
 len_time = 51
 num_shifts = len_time - 1
-data_file_path = './DeepDMD_results/Pendulum_experiment_6_10_{}_error.csv'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
+data_file_path = './DeepDMD_results/Pendulum_experiment_9_10_{}_error.csv'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
 max_time = 60; #time to run training, in minutes
 num_observables = 10;
 reg_param = 1e-5
@@ -72,9 +72,10 @@ class MLPBlock(tf.keras.Model):
     def __init__(self):
         super(MLPBlock, self).__init__()
 
-        self.linear_1 = Linear(2, 40, title='1')
-        self.linear_2 = Linear(40, 40, title='2')
-        self.linear_3 = Linear(40, num_observables, title='3')
+        self.linear_1 = Linear(2, 80, title='1')
+        self.linear_2 = Linear(80, 80, title='2')
+        self.linear_3 = Linear(80, 80, title='3')
+        self.linear_4 = Linear(80, num_observables, title='4')
 
     def call(self, inputs):
         x = self.linear_1(inputs)
@@ -82,6 +83,8 @@ class MLPBlock(tf.keras.Model):
         x = self.linear_2(x)
         x = tf.nn.relu(x)
         x = self.linear_3(x)
+        x = tf.nn.relu(x)
+        x = self.linear_4(x)
 
         # x_scaled = tf.math.divide(x,(1 + inputs[1,:]**2)) #scale x so that output is in L2
         x_scaled = tf.math.divide(x,tf.math.exp(inputs[1,:]**2)) #scale x so that output is in L2
@@ -183,7 +186,7 @@ model = MLPBlock()
 normal_vector = tf.random.normal(
     (num_observables, num_observables), mean=0.0, stddev=1.0, dtype=tf.dtypes.float64, seed=5)
 K = tf.Variable(initial_value=normal_vector)
-optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
+optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
 
 
 print("weights:", len(model.weights))
@@ -225,8 +228,8 @@ while ((time.time() - start_time) < max_time*60):
             print("\nNew best prediction loss: {:.5e}\n".format(best_val_loss))
 
             # save weights and K
-            model.save_weights('./DeepDMD_Weights/weights_experiment_6_10')
-            np.save('./DeepDMD_Weights/K_experiment_6_10.npy', K.numpy())
+            model.save_weights('./DeepDMD_Weights/weights_experiment_9_10')
+            np.save('./DeepDMD_Weights/K_experiment_9_10.npy', K.numpy())
 
 
         # print loss data to file
