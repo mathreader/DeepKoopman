@@ -6,10 +6,11 @@ tf.keras.backend.set_floatx('float64')
 import time
 import datetime
 
-data_name = 'Pendulum'
+data_name = 'Lorenz'
+input_size = 3 #size of input vector to network
 len_time = 51
 num_shifts = len_time - 1
-data_file_path = './DeepDMD_results/Pendulum_experiment_9_10_{}_error.csv'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
+data_file_path = './DeepDMD_results/{}_experiment_10_10_{}_error.csv'.format(data_name, datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
 max_time = 60; #time to run training, in minutes
 num_observables = 10;
 reg_param = 1e-5
@@ -72,7 +73,7 @@ class MLPBlock(tf.keras.Model):
     def __init__(self):
         super(MLPBlock, self).__init__()
 
-        self.linear_1 = Linear(2, 80, title='1')
+        self.linear_1 = Linear(input_size, 80, title='1')
         self.linear_2 = Linear(80, 80, title='2')
         self.linear_3 = Linear(80, 80, title='3')
         self.linear_4 = Linear(80, num_observables, title='4')
@@ -228,8 +229,8 @@ while ((time.time() - start_time) < max_time*60):
             print("\nNew best prediction loss: {:.5e}\n".format(best_val_loss))
 
             # save weights and K
-            model.save_weights('./DeepDMD_Weights/weights_experiment_9_10')
-            np.save('./DeepDMD_Weights/K_experiment_9_10.npy', K.numpy())
+            model.save_weights('./DeepDMD_Weights/weights_experiment_10_10')
+            np.save('./DeepDMD_Weights/K_experiment_10_10.npy', K.numpy())
 
 
         # print loss data to file

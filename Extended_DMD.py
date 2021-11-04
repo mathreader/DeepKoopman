@@ -5,7 +5,8 @@ tf.keras.backend.set_floatx('float64')
 import time
 import datetime
 
-data_name = 'Pendulum'
+data_name = 'Lorenz'
+input_size = 3 #size of input vector to network
 len_time = 51
 num_shifts = len_time - 1
 num_observables = 10;
@@ -70,7 +71,7 @@ class MLPBlock(tf.keras.Model):
     def __init__(self):
         super(MLPBlock, self).__init__()
 
-        self.linear_1 = Linear(2, 80, title='1')
+        self.linear_1 = Linear(input_size, 80, title='1')
         self.linear_2 = Linear(80, 80, title='2')
         self.linear_3 = Linear(80, 80, title='3')
         self.linear_4 = Linear(80, num_observables, title='4')
