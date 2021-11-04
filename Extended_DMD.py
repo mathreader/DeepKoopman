@@ -4,7 +4,6 @@ from tensorflow import keras
 tf.keras.backend.set_floatx('float64')
 import time
 import datetime
-import cvxpy as cp
 
 data_name = 'Pendulum'
 len_time = 51
@@ -99,7 +98,7 @@ def loss(model, inputs, K):
     # compute G
     #X_data = np.expand_dims(inputs[0, :, :], axis=-1)
     Theta_X = np.squeeze(model(layer1))
-    G_new = np.matmul(Theta_X,np.transpose(Theta_X))
+    G_new = np.matmul(Theta_X,tf.transpose(Theta_X))
 
     # define loss
     error = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1)) + lambda_G*tf.norm(G_new - np.identity(num_observables))
@@ -152,8 +151,8 @@ print(Theta_Y.shape)
 
 # Implementation in the Paper "A Data-Driven Approximation of the Koopman Operator: Extending Dynamic Mode Decomposition"
 print('Computing inverse')
-G_new = np.matmul(np.transpose(Theta_X),Theta_X)
-A_new = np.matmul(np.transpose(Theta_X),Theta_Y)
+G_new = np.matmul(tf.transpose(Theta_X),Theta_X)
+A_new = np.matmul(tf.transpose(Theta_X),Theta_Y)
 print(G_new.shape)
 print(A_new.shape)
 inv_G = np.linalg.pinv(G_new)
@@ -195,4 +194,4 @@ for i in range(num_observables):
 print("Norm of Deep DMD K = {}".format(tf.linalg.norm(K_deep,ord=2)))
 print("Norm of Extended DMD K = {}".format(tf.linalg.norm(K_dmd,ord=2)))
 print("Condition number of Extended DMD G = {}".format(np.linalg.cond(G_new)))
-print("Frobenius Norm Difference G = {}".format(np.linalg.norm(K_deep - K_dmd)))
+print("Frobenius Norm Difference of K = {}".format(np.linalg.norm(K_deep - K_dmd)))
