@@ -71,17 +71,20 @@ class MLPBlock(tf.keras.Model):
     def __init__(self):
         super(MLPBlock, self).__init__()
 
-        self.linear_1 = Linear(2, 40, title='1')
-        self.linear_2 = Linear(40, 40, title='2')
-        self.linear_3 = Linear(40, num_observables, title='3')
+        self.linear_1 = Linear(2, 80, title='1')
+        self.linear_2 = Linear(80, 80, title='2')
+        self.linear_3 = Linear(80, 80, title='3')
+        self.linear_4 = Linear(80, num_observables, title='4')
 
     def call(self, inputs):
         x = self.linear_1(inputs)
         x = tf.nn.relu(x)
         x = self.linear_2(x)
         x = tf.nn.relu(x)
+        x = self.linear_3(x)
+        x = tf.nn.relu(x)
         
-        return self.linear_3(x)
+        return self.linear_4(x)
 
 # The loss function to be optimized
 def loss(model, inputs, K):
@@ -113,8 +116,8 @@ def grad(model, inputs, K):
 model = MLPBlock()
 model.built = True
 #load weights
-model.load_weights('./DeepDMD_Weights/weights_experiment_6_10')
-K_deep = np.load('./DeepDMD_Weights/K_experiment_6_10.npy') #load K from deep DMD loss
+model.load_weights('./DeepDMD_Weights/weights_experiment_9_10')
+K_deep = np.load('./DeepDMD_Weights/K_experiment_9_10.npy') #load K from deep DMD loss
 
 ## compute K_dmd using extended DMD with the neural network as the dictionary functions
 #construct matrix Theta
