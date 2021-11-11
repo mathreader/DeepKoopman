@@ -179,7 +179,7 @@ def grad(model, inputs, K):
         loss_value = prediction_error + cond_num_error + SL_error
 
     return tape.gradient(loss_value, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
-        model.linear_2.b, model.linear_3.w, model.linear_3.b, K])
+        model.linear_2.b, model.linear_3.w, model.linear_3.b, model.linear_4.w, model.linear_4.b, K])
 
 
 # Define network model
