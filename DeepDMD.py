@@ -6,11 +6,11 @@ tf.keras.backend.set_floatx('float64')
 import time
 import datetime
 
-data_name = 'Lorenz'
-input_size = 3 #size of input vector to network
+data_name = 'Pendulum'
+input_size = 2 #size of input vector to network
 len_time = 51
 num_shifts = len_time - 1
-data_file_path = './DeepDMD_results/{}_experiment_10_10_{}_error.csv'.format(data_name, datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
+data_file_path = './DeepDMD_results/{}_experiment_14_10_{}_error.csv'.format(data_name, datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
 max_time = 60; #time to run training, in minutes
 num_observables = 10;
 reg_param = 1e-5
@@ -123,7 +123,7 @@ def loss(model, inputs, K):
     #prediction_error = tf.reduce_mean(tf.square(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord='euclidean', axis=1)))
     prediction_error = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1))
     #error3 = lambda_cond*tf.norm(G_new, axis=[-2, -1], ord=2)*tf.norm(tf.linalg.inv(G_new), axis=[-2, -1], ord=2)
-    cond_num_error = lambda_cond * cond_num
+    cond_num_error = lambda_cond * (cond_num - 1)
     SL_error = lambda_SL * spectral_leakage
 
     #print('Error of norm '+str(np.abs(norm_approx_G -tf.norm(G_new))))
@@ -206,7 +206,7 @@ while ((time.time() - start_time) < max_time*60):
     # Training step
     grads = grad(model, data_orig_stacked, K)
     optimizer.apply_gradients(zip(grads, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
-        model.linear_2.b, model.linear_3.w, model.linear_3.b, K]))
+        model.linear_2.b, model.linear_3.w, model.linear_3.b, model.linear_4.w, model.linear_4.b, K]))
     
     if (epoch_num-1) % 10 == 0:
         # Evaluation step
@@ -229,8 +229,8 @@ while ((time.time() - start_time) < max_time*60):
             print("\nNew best prediction loss: {:.5e}\n".format(best_val_loss))
 
             # save weights and K
-            model.save_weights('./DeepDMD_Weights/weights_experiment_10_10')
-            np.save('./DeepDMD_Weights/K_experiment_10_10.npy', K.numpy())
+            model.save_weights('./DeepDMD_Weights/weights_experiment_14_10')
+            np.save('./DeepDMD_Weights/K_experiment_14_10.npy', K.numpy())
 
 
         # print loss data to file
