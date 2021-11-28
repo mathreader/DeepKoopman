@@ -5,11 +5,13 @@ tf.keras.backend.set_floatx('float64')
 import time
 import datetime
 
-data_name = 'Lorenz'
+data_name = 'Lorenz1'
+experiment_tag = 'experiment_16'
 input_size = 3 #size of input vector to network
 len_time = 51
 num_shifts = len_time - 1
-num_observables = 10;
+num_observables = 100;
+width = 400;
 lambda1 = 0.01
 
 # Function for stacking the data
@@ -71,10 +73,10 @@ class MLPBlock(tf.keras.Model):
     def __init__(self):
         super(MLPBlock, self).__init__()
 
-        self.linear_1 = Linear(input_size, 80, title='1')
-        self.linear_2 = Linear(80, 80, title='2')
-        self.linear_3 = Linear(80, 80, title='3')
-        self.linear_4 = Linear(80, num_observables, title='4')
+        self.linear_1 = Linear(input_size, width, title='1')
+        self.linear_2 = Linear(width, width, title='2')
+        self.linear_3 = Linear(width, width, title='3')
+        self.linear_4 = Linear(width, num_observables, title='4')
 
     def call(self, inputs):
         x = self.linear_1(inputs)
@@ -89,8 +91,8 @@ class MLPBlock(tf.keras.Model):
 # The loss function to be optimized
 def loss(model, inputs, K):
     # define regularization constants
-    lambda1 = 0.01
-    lambda_G = (10**-3)/num_observables # divide by num_observables since the Frobenius norm scales with the size of the matrix
+    lambda_cond = 0.001
+    lambda_SL = 10.
 
     # define input data
     layer1 = tf.transpose(inputs[0, :, :])
@@ -98,26 +100,88 @@ def loss(model, inputs, K):
 
     # compute G
     #X_data = np.expand_dims(inputs[0, :, :], axis=-1)
-    Theta_X = np.squeeze(model(layer1))
-    G_new = np.matmul(Theta_X,tf.transpose(Theta_X))
+    Theta_X = tf.squeeze(model(layer1))
+    Theta_Y = tf.squeeze(model(layer2))
+    #print('Matrix Theta_X:')
+    #print(Theta_X)
+
+    G = tf.linalg.matmul(Theta_X, tf.transpose(Theta_X))
+    A = tf.linalg.matmul(Theta_X, tf.transpose(Theta_Y))
+    L = tf.linalg.matmul(Theta_Y, tf.transpose(Theta_Y))
+    #print('Matrix G')
+    #print(G)
+    
+    cond_num = approx_cond_num(G, 30)
+    spectral_leakage = spectral_leakage_loss(G, A, L, 30)
+    #print("Spectral Leakage = {}".format(spectral_leakage))
 
     # define loss
-    error = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1)) + lambda_G*tf.norm(G_new - np.identity(num_observables))
-    return error
+    #prediction_error = tf.reduce_mean(tf.square(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord='euclidean', axis=1)))
+    prediction_error = tf.reduce_mean(tf.norm(model(layer2) - tf.linalg.matmul(K,model(layer1)), ord=2, axis=1))
+    #error3 = lambda_cond*tf.norm(G_new, axis=[-2, -1], ord=2)*tf.norm(tf.linalg.inv(G_new), axis=[-2, -1], ord=2)
+    cond_num_error = lambda_cond * (cond_num - 1)
+    SL_error = lambda_SL * spectral_leakage
+
+    #print('Error of norm '+str(np.abs(norm_approx_G -tf.norm(G_new))))
+    #print('Error of norm inverse '+str(np.abs(norm_approx_inv_G -norm(tf.linalg.inv(G_new)))))
+    return prediction_error, cond_num_error, SL_error
+
+def approx_cond_num(G, num_iter):
+    # Power iteration
+    test_vector = tf.random.uniform((num_observables, 1), minval=0, maxval=1, dtype=tf.dtypes.float64)
+    test_vector = test_vector / tf.norm(test_vector)
+    
+    test_vector_orig = test_vector
+    test_vector_inv = test_vector
+    for i in range(num_iter):
+
+        test_vector_orig = tf.linalg.matmul(G, test_vector_orig)
+        test_vector_inv = tf.linalg.solve(G, test_vector_inv)
+        
+        test_vector_orig = test_vector_orig / tf.norm(test_vector_orig)
+        test_vector_inv = test_vector_inv / tf.norm(test_vector_inv)
+        
+        #print("Norm True Cond: {:.5e}, Approx Cond {:.5e}, ".format(lambda_cond*tf.norm(G_new, axis=[-2, -1], ord=2)*tf.norm(tf.linalg.inv(G), axis=[-2, -1], ord=2), lambda_cond * norm_approx_G * norm_approx_inv_G))
+
+    
+    norm_approx_G = tf.squeeze(tf.linalg.matmul(tf.transpose(test_vector_orig),tf.linalg.matmul(G, test_vector_orig)))
+    norm_approx_inv_G = tf.squeeze(tf.linalg.matmul(tf.transpose(test_vector_inv),tf.linalg.matmul(tf.linalg.inv(G), test_vector_inv)))
+
+    return norm_approx_G * norm_approx_inv_G
+
+def spectral_leakage_loss(G, A, L, num_iter):
+    test_vector = tf.random.uniform((num_observables, 1), minval=0, maxval=1, dtype=tf.dtypes.float64)
+    test_vector = test_vector / tf.sqrt(tf.linalg.matmul(tf.linalg.matmul(tf.transpose(test_vector),G),test_vector))
+
+    for i in range(num_iter):
+        w1 = tf.matmul(L, test_vector)
+        w2 = tf.linalg.matmul(tf.transpose(A) ,tf.linalg.solve(G,tf.linalg.matmul(tf.transpose(A), test_vector)))
+        w = tf.linalg.solve(G, w1 - w2)
+
+        #normalize test vector
+        test_vector = w / tf.sqrt(tf.linalg.matmul(tf.linalg.matmul(tf.transpose(w), G), w))
+
+    w1 = tf.matmul(L, test_vector)
+    w2 = tf.linalg.matmul(tf.transpose(A) ,tf.linalg.solve(G,tf.linalg.matmul(tf.transpose(A), test_vector)))
+
+    spectral_leakage = (tf.linalg.matmul(tf.transpose(test_vector), w1-w2))/(tf.linalg.matmul(tf.linalg.matmul(tf.transpose(test_vector), G), test_vector))
+
+    return tf.squeeze(spectral_leakage)
 
 def grad(model, inputs, K):
     with tf.GradientTape() as tape:
-        loss_value = loss(model, inputs, K)
-    return tape.gradient(loss_value, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
-        model.linear_2.b, model.linear_3.w, model.linear_3.b, K])
+        prediction_error, cond_num_error, SL_error = loss(model, inputs, K)
+        loss_value = prediction_error + cond_num_error + SL_error
 
+    return tape.gradient(loss_value, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
+        model.linear_2.b, model.linear_3.w, model.linear_3.b, model.linear_4.w, model.linear_4.b, K])
 
 # Define network model
 model = MLPBlock()
 model.built = True
 #load weights
-model.load_weights('./DeepDMD_Weights/weights_experiment_9_10')
-K_deep = np.load('./DeepDMD_Weights/K_experiment_9_10.npy') #load K from deep DMD loss
+model.load_weights('./DeepDMD_Weights/weights_{}}'.format(experiment_tag))
+K_deep = np.load('./DeepDMD_Weights/K_{}.npy'.format(experiment_tag)) #load K from deep DMD loss
 
 ## compute K_dmd using extended DMD with the neural network as the dictionary functions
 #construct matrix Theta
