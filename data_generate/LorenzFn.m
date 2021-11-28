@@ -1,4 +1,4 @@
-function X = LorenzFn(xrange, yrange, zrange, numICs, tSpan, seed)
+function X = LorenzFn(xrange, yrange, zrange, numICs, tSpan, seed, rho)
 
     % set random number generator seed
     rng(seed)
@@ -6,7 +6,7 @@ function X = LorenzFn(xrange, yrange, zrange, numICs, tSpan, seed)
     % set lorenz parameters
     sigma = 10;
     beta = 8/3;
-    rho = 28;
+    %rho = 28;
 
     % define lorenz system
     % note that xyz = [x; y; z]
