@@ -7,7 +7,7 @@ import time
 import datetime
 
 data_name = 'Lorenz1'
-experiment_tag = 'experiment_16'
+experiment_tag = 'experiment_18'
 input_size = 3 #size of input vector to network
 len_time = 51
 num_shifts = len_time - 1
@@ -99,6 +99,7 @@ def loss(model, inputs, K):
     # define regularization constants
     lambda_cond = 0.001
     lambda_SL = 10.
+    lambda_res = 1.
 
     # define input data
     layer1 = tf.transpose(inputs[0, :, :])
@@ -108,17 +109,15 @@ def loss(model, inputs, K):
     #X_data = np.expand_dims(inputs[0, :, :], axis=-1)
     Theta_X = tf.squeeze(model(layer1))
     Theta_Y = tf.squeeze(model(layer2))
-    #print('Matrix Theta_X:')
-    #print(Theta_X)
 
     G = tf.linalg.matmul(Theta_X, tf.transpose(Theta_X))
     A = tf.linalg.matmul(Theta_X, tf.transpose(Theta_Y))
     L = tf.linalg.matmul(Theta_Y, tf.transpose(Theta_Y))
-    #print('Matrix G')
-    #print(G)
+    H = tf.linalg.matmul(Theta_Y, tf.transpose(Theta_X))
     
     cond_num = approx_cond_num(G, 30)
     spectral_leakage = spectral_leakage_loss(G, A, L, 30)
+    res_loss = lambda_res * residual_loss(G, A, L, H)
     #print("Spectral Leakage = {}".format(spectral_leakage))
 
     # define loss
@@ -128,9 +127,10 @@ def loss(model, inputs, K):
     cond_num_error = lambda_cond * (cond_num - 1)
     SL_error = lambda_SL * spectral_leakage
 
+
     #print('Error of norm '+str(np.abs(norm_approx_G -tf.norm(G_new))))
     #print('Error of norm inverse '+str(np.abs(norm_approx_inv_G -norm(tf.linalg.inv(G_new)))))
-    return prediction_error, cond_num_error, SL_error
+    return prediction_error, cond_num_error, SL_error, res_loss
 
 
 def approx_cond_num(G, num_iter):
@@ -175,10 +175,39 @@ def spectral_leakage_loss(G, A, L, num_iter):
 
     return tf.squeeze(spectral_leakage)
 
+def residual_loss(G, A, L, H):
+    # find Extended DMD approximation of K
+    K_EDMD = tf.linalg.matmul(tf.linalg.pinv(G),A);
+
+    # find eigenvalues and eigenvectors of K_EDMD
+    lambdas, gs = tf.linalg.eig(K_EDMD);
+
+    #cast tensors to data type complex128 (otherwise we can't multiply by complex eigenvalues)
+    G = tf.cast(G, tf.complex128)
+    A = tf.cast(A, tf.complex128)
+    L = tf.cast(L, tf.complex128)
+    H = tf.cast(H, tf.complex128)
+
+    res_loss = 0;
+
+    #find residual (squared) for each eigenvalue, eigenvector pair
+    for i in range(0, num_observables):
+        #cast eigenvector to 10x1 tensor for matrix multiplication purposes
+        g = tf.reshape(gs[:,i], (num_observables,1))
+
+
+        num_matrix = L - lambdas[i]*H - tf.math.conj(lambdas[i])*A + tf.cast(tf.math.abs(lambdas[i]), tf.complex128)*G
+        numerator = tf.linalg.matmul(tf.linalg.matmul(tf.transpose(tf.math.conj(g)), num_matrix), g)
+        denomenator = tf.linalg.matmul(tf.linalg.matmul(tf.transpose(tf.math.conj(g)), G), g)
+        res_loss = res_loss + numerator/denomenator
+
+    return tf.squeeze(tf.math.abs(res_loss))
+
+
 def grad(model, inputs, K):
     with tf.GradientTape() as tape:
-        prediction_error, cond_num_error, SL_error = loss(model, inputs, K)
-        loss_value = prediction_error + cond_num_error + SL_error
+        prediction_error, cond_num_error, SL_error, res_loss = loss(model, inputs, K)
+        loss_value = prediction_error + cond_num_error + res_loss
 
     return tape.gradient(loss_value, [model.linear_1.w, model.linear_1.b, model.linear_2.w, 
         model.linear_2.b, model.linear_3.w, model.linear_3.b, model.linear_4.w, model.linear_4.b, K])
@@ -194,7 +223,6 @@ optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
 
 print("weights:", len(model.weights))
 print("trainable weights:", len(model.trainable_weights))
-# Weights of the model is given by model.linear1.w, model.linear1.b, model.linear2.w, model.linear2.b
 
 #open file to print data
 f = open(data_file_path, 'w')
@@ -212,8 +240,8 @@ while ((time.time() - start_time) < max_time*60):
     
     if (epoch_num-1) % 10 == 0:
         # Evaluation step
-        train_prediction_error, train_cond_num_error, train_SL_error    = loss(model, data_orig_stacked, K)
-        val_prediction_error, val_cond_num_error, val_SL_error          = loss(model, data_val_stacked, K)
+        train_prediction_error, train_cond_num_error, train_SL_error, train_res    = loss(model, data_orig_stacked, K)
+        val_prediction_error, val_cond_num_error, val_SL_error, val_res            = loss(model, data_val_stacked, K)
 
         #print results
         print("Epoch number {}".format(epoch_num))
@@ -226,17 +254,20 @@ while ((time.time() - start_time) < max_time*60):
         print("Training Spectral Leakage: {:.5e}".format(train_SL_error))
         print("Evaluation Spectral Leakage: {:.5e}".format(val_SL_error))
 
+        print("Training residual: {:.5e}".format(train_res))
+        print("Evaluation residual: {:.5e}".format(val_res))
+
         if (val_prediction_error < best_val_loss):
             best_val_loss = val_prediction_error
             print("\nNew best prediction loss: {:.5e}\n".format(best_val_loss))
 
             # save weights and K
             model.save_weights('./DeepDMD_Weights/weights_{}'.format(experiment_tag))
-            np.save('./DeepDMD_Weights/K_{}}.npy'.format(experiment_tag), K.numpy())
+            np.save('./DeepDMD_Weights/K_{}.npy'.format(experiment_tag), K.numpy())
 
 
         # print loss data to file
-        f.write("{}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_prediction_error, train_cond_num_error, train_SL_error, val_prediction_error, val_cond_num_error, val_SL_error))
+        f.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch_num, time.time() - start_time, train_prediction_error, train_cond_num_error, train_SL_error, train_res, val_prediction_error, val_cond_num_error, val_SL_error, val_res))
 
     epoch_num = epoch_num + 1;
 
