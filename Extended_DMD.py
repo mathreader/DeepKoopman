@@ -4,10 +4,11 @@ from tensorflow import keras
 tf.keras.backend.set_floatx('float64')
 import time
 import datetime
+from scipy import io
 
-data_name = 'Lorenz1'
-experiment_tag = 'experiment_18'
-input_size = 3 #size of input vector to network
+data_name = 'Pendulum'
+experiment_tag = 'experiment_21'
+input_size = 2 #size of input vector to network
 len_time = 51
 num_shifts = len_time - 1
 num_observables = 100;
@@ -204,7 +205,7 @@ def grad(model, inputs, K):
 model = MLPBlock()
 model.built = True
 #load weights
-model.load_weights('./DeepDMD_Weights/weights_{}}'.format(experiment_tag))
+model.load_weights('./DeepDMD_Weights/weights_{}'.format(experiment_tag))
 K_deep = np.load('./DeepDMD_Weights/K_{}.npy'.format(experiment_tag)) #load K from deep DMD loss
 
 ## compute K_dmd using extended DMD with the neural network as the dictionary functions
@@ -242,8 +243,9 @@ print(Theta_Y.shape)
 print('Computing inverse')
 G_new = np.matmul(tf.transpose(Theta_X),Theta_X)
 A_new = np.matmul(tf.transpose(Theta_X),Theta_Y)
-print(G_new.shape)
-print(A_new.shape)
+L_new = np.matmul(tf.transpose(Theta_Y),Theta_Y)
+
+
 inv_G = np.linalg.pinv(G_new)
 K_dmd = np.matmul(inv_G, A_new)
 print('Compute K-dmd complete')
@@ -262,6 +264,13 @@ print(K_dmd.shape)
 ## compute eigenvalues and eigenvectors of K and K_dmd
 lambda_deepDMD, v_deepDMD = np.linalg.eig(K_deep)
 lambda_eDMD, v_eDMD = np.linalg.eig(K_dmd)
+
+# print K, G, A, L, and the eigenvalues of K to a matlab data file
+matlab_dict = {'eigenvalues': lambda_eDMD, 'K':K_dmd, 'G':G_new, 'A':A_new, 'L':L_new}
+matlab_file_name = './MatlabFiles/{}_matrices.mat'.format(experiment_tag)
+io.savemat(matlab_file_name, matlab_dict)
+
+print("type of lambdas: ")
 print(K_deep)
 print(K_dmd)
 
@@ -272,13 +281,13 @@ lambda_deepDMD_sorted = np.sort(lambda_deepDMD)
 lambda_eDMD_sorted = np.sort(lambda_eDMD)
 lambda_deepDMD_sorted = np.absolute(lambda_deepDMD_sorted)
 lambda_eDMD_sorted = np.absolute(lambda_eDMD_sorted)
-
+print(lambda_eDMD_sorted.dtype)
 print('Complete eig comp for lambda_DMD')
 
 #print eigenvalues
 print("Eigenvalues:")
 for i in range(num_observables):
-	print("Deep DMD: {}, Extended DMD: {}".format(lambda_deepDMD_sorted[i], lambda_eDMD_sorted[i]))
+	print("Deep DMD: {}, Extended DMD: {}".format(lambda_deepDMD[i], lambda_eDMD[i]))
 
 print("Norm of Deep DMD K = {}".format(tf.linalg.norm(K_deep,ord=2)))
 print("Norm of Extended DMD K = {}".format(tf.linalg.norm(K_dmd,ord=2)))
