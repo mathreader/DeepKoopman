@@ -1,10 +1,10 @@
 
 numICs = 5000;
-filenamePrefix = 'Pendulum';
+filenamePrefix = 'Pendulum3'; %name Pendulum3 corresponds to data with trajectories of length 2 and time step of 0.5
 
 x1range = [-3.1,3.1];
 x2range = [-2, 2];
-tSpan = 0:0.02:1;
+tSpan   = [0, 0.5]; %0:0.02:1;
 
 max_potential = .99;
 

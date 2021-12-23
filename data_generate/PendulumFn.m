@@ -26,7 +26,7 @@ for j = 1:100*numICs
 
         [T, temp] = ode45(dynsys, tSpan, ic);
 
-        X(1+(count-1)*lenT : lenT + (count-1)*lenT,:) = temp;
+        X(1+(count-1)*lenT : lenT + (count-1)*lenT,:) = [temp(1,:); temp(end,:)];
         if count == numICs
             break
         end
