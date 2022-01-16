@@ -6,13 +6,13 @@ import time
 import datetime
 from scipy import io
 
-data_name = 'Pendulum'
-experiment_tag = 'experiment_21'
+data_name = 'Pendulum5'
+experiment_tag = 'experiment_31'
 input_size = 2 #size of input vector to network
-len_time = 51
+len_time = 2
 num_shifts = len_time - 1
-num_observables = 100;
-width = 400;
+num_observables = 400;
+width = 800;
 lambda1 = 0.01
 
 # Function for stacking the data
@@ -92,7 +92,7 @@ class MLPBlock(tf.keras.Model):
 # The loss function to be optimized
 def loss(model, inputs, K):
     # define regularization constants
-    lambda_cond = 0.001
+    lambda_cond = 0.01
     lambda_SL = 10.
     lambda_res = 1.
 
@@ -289,7 +289,7 @@ print("Eigenvalues:")
 for i in range(num_observables):
 	print("Deep DMD: {}, Extended DMD: {}".format(lambda_deepDMD[i], lambda_eDMD[i]))
 
-print("Norm of Deep DMD K = {}".format(tf.linalg.norm(K_deep,ord=2)))
-print("Norm of Extended DMD K = {}".format(tf.linalg.norm(K_dmd,ord=2)))
+print("Norm of Deep DMD K = {}".format(tf.linalg.norm(K_deep, axis=[-2, -1], ord=2)))
+print("Norm of Extended DMD K = {}".format(tf.linalg.norm(K_dmd,axis=[-2, -1], ord=2)))
 print("Condition number of Extended DMD G = {}".format(np.linalg.cond(G_new)))
 print("Frobenius Norm Difference of K = {}".format(np.linalg.norm(K_deep - K_dmd)))
